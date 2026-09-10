@@ -1,0 +1,27 @@
+# Caddy — TLS termination + routing
+# /api/* -> FastAPI, everything else -> front-end static build
+{
+    admin off
+}
+
+:80 {
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy api:8000 {
+            # SSE streaming: don't buffer proxied event streams
+            flush_interval -1
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle {
+        root * /srv/web
+        try_files {path} /index.html
+        file_server
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}
