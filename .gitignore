@@ -1,0 +1,25 @@
+# Secrets
+.env
+.env.*
+
+# Node
+node_modules/
+front-end/dist/
+front-end/.vite/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+back-end/.venv/
+.uv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Misc
+.DS_Store
+dist/
