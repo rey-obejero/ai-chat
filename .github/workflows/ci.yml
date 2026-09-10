@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  back-end:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+        working-directory: back-end
+      - run: uv run ruff check . && uv run ruff format --check .
+        working-directory: back-end
+      - run: uv run pytest
+        working-directory: back-end
+
+  front-end:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: front-end/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: front-end
+      - run: pnpm eslint . && pnpm exec prettier --check .
+        working-directory: front-end
+      - run: pnpm test
+        working-directory: front-end
+      - run: pnpm build
+        working-directory: front-end
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
