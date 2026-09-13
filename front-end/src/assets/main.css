@@ -1,0 +1,80 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Colors — achromatic (DESIGN.md) */
+  --color-paper-white: #ffffff;
+  --color-canvas: #fafafa;
+  --color-line: #eaeaea;
+  --color-subtext: #666666;
+  --color-icon: #7d7d7d;
+  --color-ink: #171717;
+  --color-onyx: #000000;
+
+  /* Typography — families */
+  --font-sans:
+    'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Typography — scale (size + paired line-height / tracking) */
+  --text-caption: 10px;
+  --text-caption--line-height: 1.5;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 1.43;
+  --text-body: 16px;
+  --text-body--line-height: 1.5;
+  --text-subheading: 18px;
+  --text-subheading--line-height: 1.56;
+  --text-heading-sm: 20px;
+  --text-heading-sm--line-height: 1.25;
+  --text-heading: 24px;
+  --text-heading--line-height: 1.33;
+  --text-heading--letter-spacing: -0.48px;
+  --text-heading-lg: 32px;
+  --text-heading-lg--line-height: 1.17;
+  --text-heading-lg--letter-spacing: -1.28px;
+  --text-display: 48px;
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: -2.88px;
+
+  /* Radius */
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 35px;
+  --radius-cards: 12px;
+  --radius-inputs: 12px;
+  --radius-buttons: 8px;
+  --radius-pills: 9999px;
+
+  /* Shadows — reserved for cards and overlays */
+  --shadow-subtle: rgba(0, 0, 0, 0.08) 0px 0px 0px 1px, rgba(0, 0, 0, 0.04) 0px 2px 1px 0px;
+  --shadow-subtle-2: rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+  --shadow-subtle-3: rgba(0, 0, 0, 0.04) 0px 2px 2px 0px, rgba(0, 0, 0, 0.04) 0px 8px 8px -8px;
+  --shadow-xl: rgba(0, 0, 0, 0.25) 0px 25px 50px -12px;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background-color: var(--color-canvas);
+    font-feature-settings: 'zero', 'ss09', 'ss05';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+  }
+}
+
+@utility annotation {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  font-feature-settings: 'zero';
+}
