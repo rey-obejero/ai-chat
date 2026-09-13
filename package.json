@@ -12,5 +12,11 @@
     "@commitlint/config-conventional": "^19.8.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "browser-tabs-lock",
+      "esbuild"
+    ]
   }
 }
