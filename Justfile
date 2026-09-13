@@ -1,39 +1,33 @@
-# AI Chat Assistant — task runner (requires https://just.systems)
 set dotenv-load := false
 
 default:
     @just --list
 
-# ---- dev ----
-dev-api:
-    cd back-end && uv run uvicorn ai_chat_assistant.main:app --reload --port 8000
+dependencies:
+    docker compose up
 
-dev-web:
+dependencies-stop:
+    docker compose stop
+
+back-end:
+    cd back-end && uv run uvicorn ai_chat.main:app --reload --port 8000 --proxy-headers --forwarded-allow-ips "*"
+
+front-end:
     cd front-end && pnpm dev --port 5173
 
-# ---- compose ----
-up:
-    docker compose up --build
-
-up-d:
-    docker compose up --build -d
-
-down:
-    docker compose down
-
-logs:
-    docker compose logs -f
-
-# ---- test / lint ----
-test-api:
+test-back-end:
     cd back-end && uv run pytest
 
-test-web:
+test-front-end:
     cd front-end && pnpm test
+
+test-e2e:
+    cd e2e && pnpm test
 
 lint:
     cd back-end && uv run ruff check . && uv run ruff format --check .
     cd front-end && pnpm eslint . && pnpm prettier --check .
 
-hooks-install:
-    pnpm install && npx husky
+install:
+    cd back-end && uv sync
+    pnpm install
