@@ -4,7 +4,7 @@ import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import IconLibrary from '~icons/lucide/library'
@@ -29,6 +29,7 @@ const router = useRouter()
 const collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true')
 const draft = ref('')
 const accountMenu = ref()
+const scrollArea = ref<HTMLElement | null>(null)
 const hydrating = ref(false)
 
 const conversationId = computed(() => {
@@ -75,6 +76,9 @@ watch(collapsed, (value) => {
   localStorage.setItem('sidebar-collapsed', String(value))
 })
 
+// Follow the newest turn, including while it streams in.
+watch(messages, () => void scrollToNewest(), { flush: 'post' })
+
 onMounted(() => {
   void conversations.load()
 })
@@ -114,6 +118,14 @@ watch(
   },
   { immediate: true },
 )
+
+async function scrollToNewest(): Promise<void> {
+  await nextTick()
+  const area = scrollArea.value
+  if (area) {
+    area.scrollTop = area.scrollHeight
+  }
+}
 
 function toggleCollapsed(): void {
   collapsed.value = !collapsed.value
@@ -244,7 +256,7 @@ async function signOut(): Promise<void> {
 
     <main class="flex min-w-0 flex-1 flex-col bg-paper-white">
       <template v-if="conversationId">
-        <div class="min-h-0 flex-1 overflow-y-auto px-6 py-8">
+        <div ref="scrollArea" class="min-h-0 flex-1 overflow-y-auto px-6 py-8">
           <MessageList :messages="messages" />
         </div>
         <div class="px-6 pb-6">
