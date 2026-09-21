@@ -1,6 +1,6 @@
 from ai_chat.auth import get_current_user_id
 from ai_chat.auth.models import User
-from ai_chat.chat.models import Conversation
+from ai_chat.conversations.models import Conversation
 
 
 async def test_conversations_are_isolated_per_user(app, client, session_factory) -> None:

@@ -3,11 +3,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_chat.auth import get_current_user_id
-from ai_chat.chat.models import Conversation
-from ai_chat.chat.schemas import ConversationRead
+from ai_chat.conversations.models import Conversation
+from ai_chat.conversations.schemas import ConversationRead
 from ai_chat.shared.db import get_session
 
-router = APIRouter(prefix="/conversations", tags=["chat"])
+router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
 @router.get("", response_model=list[ConversationRead])

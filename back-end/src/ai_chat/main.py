@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI
 
 from ai_chat.auth import router as auth_router
-from ai_chat.chat import router as chat_router
+from ai_chat.conversations import router as conversations_router
 from ai_chat.shared.config import Settings, get_settings
 from ai_chat.shared.exceptions import register_exception_handlers
 
@@ -28,7 +28,7 @@ def create_app(settings: Settings | None = None, *, init_auth: bool = True) -> F
         return {"status": "ok"}
 
     api.include_router(auth_router)
-    api.include_router(chat_router)
+    api.include_router(conversations_router)
     app.include_router(api)
 
     return app
