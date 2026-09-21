@@ -53,6 +53,12 @@ class NotFoundError(AppError):
     title = "Not Found"
 
 
+class RateLimitedError(AppError):
+    status_code = HTTPStatus.TOO_MANY_REQUESTS
+    code = "RATE_LIMITED"
+    title = "Too Many Requests"
+
+
 def problem_body(
     *,
     status_code: int,

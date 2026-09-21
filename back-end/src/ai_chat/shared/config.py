@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     llm_max_output_tokens: int = 1024
     llm_request_timeout: float = 60.0
 
+    # Rate limiting (ADR-0020). Memory storage in development; switch to
+    # "async+redis://…" once the API runs more than one process.
+    rate_limit_enabled: bool = True
+    rate_limit_storage_uri: str = "async+memory://"
+    rate_limit_chat: str = "20/minute"
+    rate_limit_path_prefixes: list[str] = ["/api/v1/conversations"]
+    rate_limit_fail_open: bool = True
+
     @property
     def supertokens_api_key_or_none(self) -> str | None:
         return self.supertokens_api_key or None
