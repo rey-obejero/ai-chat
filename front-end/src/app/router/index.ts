@@ -5,7 +5,7 @@ import { useSessionStore } from '@/features/auth'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/chat' },
+    { path: '/', redirect: '/conversations' },
     {
       path: '/sign-in',
       name: 'sign-in',
@@ -22,9 +22,9 @@ const router = createRouter({
       component: () => import('@/features/auth').then((m) => m.AuthCallbackView),
     },
     {
-      path: '/chat',
-      name: 'chat',
-      component: () => import('@/features/chat').then((m) => m.ChatView),
+      path: '/conversations',
+      name: 'conversations',
+      component: () => import('@/features/conversations').then((m) => m.ConversationsView),
       meta: { requiresAuth: true },
     },
   ],
@@ -41,7 +41,7 @@ router.beforeEach(async (to) => {
   }
 
   if ((to.name === 'sign-in' || to.name === 'sign-up') && session.isAuthenticated) {
-    return { name: 'chat' }
+    return { name: 'conversations' }
   }
 
   return true

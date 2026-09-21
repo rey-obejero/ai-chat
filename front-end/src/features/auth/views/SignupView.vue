@@ -34,7 +34,7 @@ async function submit(): Promise<void> {
 
     if (response.status === 'OK') {
       await session.refresh()
-      await router.replace('/chat')
+      await router.replace('/conversations')
     } else if (response.status === 'FIELD_ERROR') {
       error.value = response.formFields[0]?.error ?? 'Could not create your account.'
     } else {

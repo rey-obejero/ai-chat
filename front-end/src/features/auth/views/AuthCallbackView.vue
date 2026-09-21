@@ -16,7 +16,7 @@ onMounted(async () => {
     const response = await ThirdParty.signInAndUp()
     if (response.status === 'OK') {
       await session.refresh()
-      await router.replace('/chat')
+      await router.replace('/conversations')
     } else {
       error.value = 'Your provider did not share an email address.'
     }
