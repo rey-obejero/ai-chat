@@ -3,6 +3,9 @@
 Living build tracker for `ai-chat`. Source of truth for stack and features:
 `~/documents/ai-chat-assistant.md`.
 
+Architectural decisions are recorded as ADRs in [`adrs/`](adrs/README.md); this
+file tracks build progress, not decision rationale.
+
 ## Tooling debt
 
 - [x] Removed gitleaks from pre-commit hook (was failing with 127, binary
@@ -13,14 +16,26 @@ Living build tracker for `ai-chat`. Source of truth for stack and features:
 
 Email/password + Google/GitHub social login (SuperTokens), async SQLAlchemy,
 app-level `users` + `conversations` tables (Alembic revision `0001`), guarded
-`/me`, and a protected chat shell. All errors use RFC 9457 problem+json,
+`/me`, and a protected conversations view. All errors use RFC 9457 problem+json,
 including SuperTokens' own 401s. Front-end ships custom PrimeVue 4 forms
 styled through the DESIGN.md Tailwind v4 tokens.
 
-## Next: streaming chat
+## Done: streaming replies (back-end)
 
-Pinned SSE protocol (AI SDK v1) with a hand-rolled FastAPI emitter, message
-persistence, and the conversation/message list UI.
+`POST /conversations/{id}/messages` streams the assistant reply as SSE in the AI
+SDK UI Message Stream v1 format and persists both turns; a `messages` table and
+migration (`0002`) back it (ADR-0012, ADR-0022).
+
+## Done: the conversation view
+
+Message list, streaming rendering, and the composer wired to the endpoint via
+`@ai-sdk/vue` with a custom transport, covered end to end against a deterministic
+mock provider (ADR-0022, ADR-0023).
+
+## Next: the token quota and a public deploy
+
+Per-user token accounting in Postgres on top of the request-rate limiter, then
+the capped OpenRouter key and a deploy (ADR-0019, ADR-0020).
 
 ## Deferred: containerized stack
 
