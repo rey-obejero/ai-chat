@@ -13,6 +13,7 @@ dependencies = [
     "alembic>=1.14.0",
     "pydantic-settings>=2.7.0",
     "python-multipart>=0.0.20",
+    "openai>=3.16.2",
 ]
 
 [dependency-groups]
