@@ -18,7 +18,7 @@ import { listMessages } from '../api'
 import ConversationList from '../components/ConversationList.vue'
 import MessageComposer from '../components/MessageComposer.vue'
 import MessageList from '../components/MessageList.vue'
-import { createConversationTransport, toUIMessages } from '../messages'
+import { createConversationTransport, describeError, toUIMessages } from '../messages'
 import { useConversationsStore } from '../stores/conversations'
 
 const session = useSessionStore()
@@ -56,6 +56,7 @@ const busy = computed(() => {
 // `submitted` is the window between sending and the first token arriving, when
 // there is nothing in the list yet to show for the request.
 const working = computed(() => chat.status.value === 'submitted')
+const errorMessage = computed(() => (chat.error.value ? describeError(chat.error.value) : ''))
 const canSend = computed(() => draft.value.trim().length > 0 && !busy.value && !hydrating.value)
 
 const activeId = computed({
@@ -265,6 +266,13 @@ async function signOut(): Promise<void> {
       <template v-if="conversationId">
         <div ref="scrollArea" class="min-h-0 flex-1 overflow-y-auto px-6 py-8">
           <MessageList :messages="messages" :working="working" />
+          <p
+            v-if="errorMessage"
+            role="alert"
+            class="mx-auto mt-4 max-w-2xl text-body-sm text-subtext"
+          >
+            {{ errorMessage }}
+          </p>
         </div>
         <div class="px-6 pb-6">
           <MessageComposer

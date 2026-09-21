@@ -22,6 +22,21 @@ export class ApiError extends Error {
   }
 }
 
+/** Parse an RFC 9457 response into an `ApiError`, tolerating non-JSON bodies. */
+export async function readProblem(response: Response): Promise<ApiError> {
+  let problem: ProblemDetails = {
+    type: 'about:blank',
+    title: response.statusText,
+    status: response.status,
+  }
+  try {
+    problem = (await response.json()) as ProblemDetails
+  } catch {
+    // Non-JSON error body — fall back to the status line above.
+  }
+  return new ApiError(problem)
+}
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
     ...init,
@@ -34,17 +49,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   })
 
   if (!response.ok) {
-    let problem: ProblemDetails = {
-      type: 'about:blank',
-      title: response.statusText,
-      status: response.status,
-    }
-    try {
-      problem = (await response.json()) as ProblemDetails
-    } catch {
-      // Non-JSON error body — fall back to the status line above.
-    }
-    throw new ApiError(problem)
+    throw await readProblem(response)
   }
 
   if (response.status === 204) {
