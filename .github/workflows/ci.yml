@@ -36,6 +36,40 @@ jobs:
       - run: pnpm build
         working-directory: front-end
 
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      # The core container requires its API key; the SDK default is empty.
+      SUPERTOKENS_API_KEY: dev-key-change-me
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: docker compose up -d --wait
+      - name: Wait for SuperTokens
+        run: |
+          for _ in $(seq 1 60); do
+            curl -fsS http://localhost:3567/hello >/dev/null && exit 0
+            sleep 2
+          done
+          docker compose logs supertokens
+          exit 1
+      - run: uv sync --frozen
+        working-directory: back-end
+      - run: uv run alembic upgrade head
+        working-directory: back-end
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: e2e
+      # Playwright starts the mock provider, the API, and the SPA itself.
+      - run: pnpm test
+        working-directory: e2e
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:
