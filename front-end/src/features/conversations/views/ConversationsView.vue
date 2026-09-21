@@ -29,6 +29,7 @@ const router = useRouter()
 const collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true')
 const draft = ref('')
 const accountMenu = ref()
+const composer = ref<InstanceType<typeof MessageComposer> | null>(null)
 const scrollArea = ref<HTMLElement | null>(null)
 const hydrating = ref(false)
 
@@ -96,6 +97,7 @@ watch(
   async (id) => {
     if (!id) {
       chat.messages.value = []
+      await focusComposer()
       return
     }
 
@@ -119,6 +121,8 @@ watch(
     if (queued) {
       await chat.sendMessage({ text: queued })
     }
+
+    await focusComposer()
   },
   { immediate: true },
 )
@@ -129,6 +133,11 @@ async function scrollToNewest(): Promise<void> {
   if (area) {
     area.scrollTop = area.scrollHeight
   }
+}
+
+async function focusComposer(): Promise<void> {
+  await nextTick()
+  await composer.value?.focus()
 }
 
 function toggleCollapsed(): void {
@@ -276,6 +285,7 @@ async function signOut(): Promise<void> {
         </div>
         <div class="px-6 pb-6">
           <MessageComposer
+            ref="composer"
             v-model="draft"
             :disabled="!canSend"
             :busy="busy"
@@ -293,6 +303,7 @@ async function signOut(): Promise<void> {
             </h1>
             <div class="mt-8">
               <MessageComposer
+                ref="composer"
                 v-model="draft"
                 :disabled="!canSend"
                 :busy="busy"

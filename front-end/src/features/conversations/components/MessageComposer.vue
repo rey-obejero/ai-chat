@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
+import { nextTick, ref, type ComponentPublicInstance } from 'vue'
 
 import IconArrowUp from '~icons/lucide/arrow-up'
 import IconPlus from '~icons/lucide/plus'
@@ -11,12 +12,24 @@ const draft = defineModel<string>({ required: true })
 defineProps<{ disabled: boolean; busy: boolean }>()
 const emit = defineEmits<{ submit: []; stop: [] }>()
 
+const textarea = ref<ComponentPublicInstance | null>(null)
+
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
     emit('submit')
   }
 }
+
+async function focus(): Promise<void> {
+  await nextTick()
+  const element = textarea.value?.$el
+  if (element instanceof HTMLElement) {
+    element.focus()
+  }
+}
+
+defineExpose({ focus })
 </script>
 
 <template>
@@ -24,6 +37,7 @@ function onKeydown(event: KeyboardEvent): void {
     class="mx-auto w-full max-w-2xl rounded-xl border border-line bg-paper-white p-3 transition-colors focus-within:border-ink/60"
   >
     <Textarea
+      ref="textarea"
       v-model="draft"
       auto-resize
       rows="1"
