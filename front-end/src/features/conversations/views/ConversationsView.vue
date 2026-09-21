@@ -163,6 +163,10 @@ async function submit(): Promise<void> {
   await chat.sendMessage({ text })
 }
 
+function stop(): void {
+  void chat.stop()
+}
+
 async function signOut(): Promise<void> {
   await session.signOut()
   await router.replace('/sign-in')
@@ -263,7 +267,13 @@ async function signOut(): Promise<void> {
           <MessageList :messages="messages" :working="working" />
         </div>
         <div class="px-6 pb-6">
-          <MessageComposer v-model="draft" :disabled="!canSend" @submit="submit" />
+          <MessageComposer
+            v-model="draft"
+            :disabled="!canSend"
+            :busy="busy"
+            @submit="submit"
+            @stop="stop"
+          />
         </div>
       </template>
 
@@ -274,7 +284,13 @@ async function signOut(): Promise<void> {
               Ask anything about your documents.
             </h1>
             <div class="mt-8">
-              <MessageComposer v-model="draft" :disabled="!canSend" @submit="submit" />
+              <MessageComposer
+                v-model="draft"
+                :disabled="!canSend"
+                :busy="busy"
+                @submit="submit"
+                @stop="stop"
+              />
             </div>
           </div>
         </div>

@@ -4,11 +4,12 @@ import Textarea from 'primevue/textarea'
 
 import IconArrowUp from '~icons/lucide/arrow-up'
 import IconPlus from '~icons/lucide/plus'
+import IconSquare from '~icons/lucide/square'
 
 const draft = defineModel<string>({ required: true })
 
-defineProps<{ disabled: boolean }>()
-const emit = defineEmits<{ submit: [] }>()
+defineProps<{ disabled: boolean; busy: boolean }>()
+const emit = defineEmits<{ submit: []; stop: [] }>()
 
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Enter' && !event.shiftKey) {
@@ -35,7 +36,10 @@ function onKeydown(event: KeyboardEvent): void {
       <Button text rounded aria-label="Attach a file">
         <IconPlus class="text-icon" />
       </Button>
-      <Button rounded :disabled="disabled" aria-label="Send" @click="emit('submit')">
+      <Button v-if="busy" rounded severity="secondary" aria-label="Stop" @click="emit('stop')">
+        <IconSquare class="text-icon" />
+      </Button>
+      <Button v-else rounded :disabled="disabled" aria-label="Send" @click="emit('submit')">
         <IconArrowUp />
       </Button>
     </div>
