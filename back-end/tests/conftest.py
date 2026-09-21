@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import StaticPool
 
 from ai_chat.main import create_app
+from ai_chat.shared.config import Settings
 from ai_chat.shared.db import Base, get_session, get_session_factory
 
 
@@ -27,7 +28,9 @@ async def session_factory():
 
 @pytest_asyncio.fixture
 async def app(session_factory):
-    application = create_app(init_auth=False)
+    # Rate limiting is exercised by its own tests against the middleware
+    # directly; the shared app fixture keeps it off so auth is not involved.
+    application = create_app(Settings(_env_file=None, rate_limit_enabled=False), init_auth=False)
 
     async def override_session():
         async with session_factory() as session:
