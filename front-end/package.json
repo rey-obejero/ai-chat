@@ -14,7 +14,9 @@
     "format": "prettier --write src"
   },
   "dependencies": {
+    "@ai-sdk/vue": "^4.0.107",
     "@primevue/themes": "^4.3.0",
+    "ai": "^7.0.107",
     "pinia": "^3.0.0",
     "primevue": "^4.3.0",
     "supertokens-web-js": "^0.16.0",
