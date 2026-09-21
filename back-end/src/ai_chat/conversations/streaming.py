@@ -60,7 +60,13 @@ async def stream_reply(
 
     content = "".join(collected)
     if content:
-        await _persist_assistant_message(session_factory, message_id, conversation_id, content)
+        try:
+            await _persist_assistant_message(session_factory, message_id, conversation_id, content)
+        except Exception:
+            logger.exception("Failed to persist the reply for conversation %s", conversation_id)
+            yield sse.error("The reply could not be saved.")
+            yield sse.DONE
+            return
 
     yield sse.finish()
     yield sse.DONE
