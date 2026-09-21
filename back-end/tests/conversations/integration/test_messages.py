@@ -116,6 +116,32 @@ async def test_provider_failure_is_reported_as_an_error_part(app, client, sessio
     assert [item["role"] for item in history.json()] == ["user"]
 
 
+async def test_persistence_failure_is_reported_as_an_error_part(
+    app, client, session_factory, monkeypatch
+) -> None:
+    conversation_id = await _seed_conversation(session_factory)
+    _current_user(app)
+    _use_provider(app, [ChatChunk(content="Hi there")])
+
+    async def _explode(*_args, **_kwargs):
+        raise RuntimeError("database vanished")
+
+    monkeypatch.setattr("ai_chat.conversations.streaming._persist_assistant_message", _explode)
+
+    response = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        json={"content": "Hello"},
+    )
+
+    parts = _parts(response)
+    assert parts[-1] == "[DONE]"
+    assert any(isinstance(part, dict) and part["type"] == "error" for part in parts)
+    assert not any(isinstance(part, dict) and part["type"] == "finish" for part in parts)
+
+    history = await client.get(f"/api/v1/conversations/{conversation_id}/messages")
+    assert [item["role"] for item in history.json()] == ["user"]
+
+
 async def test_other_users_conversations_are_not_visible(app, client, session_factory) -> None:
     conversation_id = await _seed_conversation(session_factory, user_id="user-1")
     _current_user(app, user_id="user-2")
