@@ -63,6 +63,10 @@ just test-e2e       # Playwright (root e2e/)
 just lint           # ruff + eslint + prettier
 ```
 
+`just test-e2e` starts its own SPA, API, and mock model provider. Stop any
+running dev servers first, or Playwright will reuse them and the chat specs will
+fail to reach the mock (ADR-0023).
+
 Dev runs the API and SPA directly (`:8000` / `:5173`); Vite proxies `/api`.
 Running the whole stack in containers (api + Caddy) is deferred.
 

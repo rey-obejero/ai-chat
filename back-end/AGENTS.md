@@ -20,10 +20,15 @@ FastAPI service for AI Chat. Root guide: `../AGENTS.md`.
 ```
 back-end/
 ├── src/ai_chat/
-│   ├── main.py            # create_app(); owns the /api/v1 prefix
-│   ├── shared/            # horizontal infra: config, db, exceptions, pagination
-│   ├── auth/              # feature slice (models, schemas, service, router, port)
-│   ├── chat/              # feature slice (conversations)
+│   ├── main.py            # create_app(); owns the /api/v1 prefix; wires middleware
+│   ├── shared/            # horizontal infra: config, db, exceptions, pagination,
+│   │                      #   rate_limit (ASGI middleware, ADR-0020),
+│   │                      #   streaming (AI SDK wire encoders, ADR-0012)
+│   ├── auth/              # feature slice (models, schemas, service, router, port);
+│   │                      #   identity.resolve_user_id serves middleware
+│   ├── conversations/     # feature slice (models, schemas, service, router,
+│   │                      #   streaming) — conversations + messages
+│   ├── llm/               # feature slice (port, schemas, service, adapters/) — ADR-0018
 │   └── documents/         # future slice
 ├── tests/<feature>/{unit,integration}/
 └── alembic/versions/      # migrations
