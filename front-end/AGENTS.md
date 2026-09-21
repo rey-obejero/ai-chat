@@ -25,8 +25,8 @@ front-end/src/
 ├── features/
 │   ├── auth/               # index.ts is the public API
 │   │   ├── api.ts  stores/  components/  views/
-│   └── chat/               # index.ts is the public API
-│       ├── stores/  components/  views/
+│   └── conversations/      # index.ts is the public API
+│       ├── api.ts  chat.ts  stores/  components/  views/
 ├── components/             # global shared components
 ├── stores/                 # global stores (feature stores stay in features/)
 └── lib/api.ts              # fetch wrapper for /api/v1 (RFC 9457 aware)
@@ -46,14 +46,12 @@ pnpm format         # prettier --write src
 
 From the repo root, prefer `just front-end` / `just test-front-end` / `just lint`.
 
-## Design system (DESIGN.md — obey it)
+## Design system
 
-- **Colors:** primary/secondary/success/warning/danger/surface/text/neutral.
-  Tailwind tokens are declared in `src/assets/main.css` under `@theme`.
-- **Typography:** display Inter, body Open Sans, mono Inconsolata; `h1` is 3rem.
-  Use the `.label-caps` helper for the mono uppercase small caps.
-- **Spacing scale:** 4/8/12/16/24/32. **Radius:** sm 4px, md 8px.
-- Do not introduce colors, fonts, or spacing outside these tokens.
+The contract is [`DESIGN.md`](../DESIGN.md) — binding for colors, typography,
+spacing, radii, and components. Read it before any UI work; don't restate its
+tokens here, and don't introduce values outside them. Implementations of the
+tokens are noted under "Tailwind v4" and "Don't" below.
 
 ## Architecture rules
 
