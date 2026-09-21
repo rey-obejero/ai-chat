@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
 
+    # LLM provider — OpenRouter by default (ADR-0018). The key is env-only
+    # (ADR-0009) and no default means a missing key fails loudly at request time.
+    llm_api_key: str = ""
+    llm_base_url: str = "https://openrouter.ai/api/v1"
+    llm_model: str = "openai/gpt-4o-mini"
+    llm_embedding_model: str = "openai/text-embedding-3-small"
+    llm_max_output_tokens: int = 1024
+    llm_request_timeout: float = 60.0
+
     @property
     def supertokens_api_key_or_none(self) -> str | None:
         return self.supertokens_api_key or None
