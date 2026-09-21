@@ -1,7 +1,13 @@
 import type { UIMessage } from 'ai'
 import { describe, expect, it } from 'vitest'
 
-import { lastUserText, messageText, toUIMessages } from '@/features/conversations/messages'
+import {
+  describeError,
+  lastUserText,
+  messageText,
+  toUIMessages,
+} from '@/features/conversations/messages'
+import { ApiError } from '@/lib/api'
 
 describe('conversation message helpers', () => {
   it('joins the text parts of a message', () => {
@@ -41,5 +47,37 @@ describe('conversation message helpers', () => {
       { id: 'a', role: 'user', parts: [{ type: 'text', text: 'hi' }] },
       { id: 'b', role: 'assistant', parts: [{ type: 'text', text: 'hello' }] },
     ])
+  })
+})
+
+describe('describeError', () => {
+  it('turns a known problem code into readable copy', () => {
+    const error = new ApiError({
+      type: 'about:blank',
+      title: 'Too Many Requests',
+      status: 429,
+      detail: 'Rate limit exceeded.',
+      code: 'RATE_LIMITED',
+    })
+
+    expect(describeError(error)).toBe(
+      'Too many messages too quickly. Wait a moment, then try again.',
+    )
+  })
+
+  it('falls back to the server detail for an unmapped code', () => {
+    const error = new ApiError({
+      type: 'about:blank',
+      title: 'Conflict',
+      status: 409,
+      detail: 'Conversation already exists.',
+      code: 'CONFLICT',
+    })
+
+    expect(describeError(error)).toBe('Conversation already exists.')
+  })
+
+  it('degrades gracefully for an unknown error', () => {
+    expect(describeError(new Error('boom'))).toBe('Something went wrong. Try again.')
   })
 })
