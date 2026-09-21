@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import StaticPool
 
 from ai_chat.main import create_app
-from ai_chat.shared.db import Base, get_session
+from ai_chat.shared.db import Base, get_session, get_session_factory
 
 
 @pytest_asyncio.fixture
@@ -34,6 +34,7 @@ async def app(session_factory):
             yield session
 
     application.dependency_overrides[get_session] = override_session
+    application.dependency_overrides[get_session_factory] = lambda: session_factory
     return application
 
 
