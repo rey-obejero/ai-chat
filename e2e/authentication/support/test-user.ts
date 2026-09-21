@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 const CORE_URL = process.env.E2E_SUPERTOKENS_CORE_URL ?? "http://localhost:3567";
 const API_KEY = process.env.E2E_SUPERTOKENS_API_KEY ?? "dev-key-change-me";
 
@@ -6,11 +8,8 @@ export interface TestUser {
   password: string;
 }
 
-let counter = 0;
-
 export function uniqueEmail(): string {
-  counter += 1;
-  return `e2e-${Date.now()}-${counter}@example.com`;
+  return `e2e-${randomUUID()}@example.com`;
 }
 
 export async function seedUser(overrides: Partial<TestUser> = {}): Promise<TestUser> {
