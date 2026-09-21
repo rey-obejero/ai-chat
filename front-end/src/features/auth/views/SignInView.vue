@@ -23,7 +23,7 @@ const router = useRouter()
 const session = useSessionStore()
 
 function redirectTarget(): string {
-  return typeof route.query.redirect === 'string' ? route.query.redirect : '/chat'
+  return typeof route.query.redirect === 'string' ? route.query.redirect : '/conversations'
 }
 
 async function submit(): Promise<void> {

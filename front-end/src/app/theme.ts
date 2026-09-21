@@ -22,6 +22,7 @@ export const AiChatPreset = definePreset(Aura, {
       color: '#171717',
       offset: '2px',
     },
+    disabledOpacity: '0.35',
     colorScheme: {
       light: {
         primary: {
@@ -60,6 +61,81 @@ export const AiChatPreset = definePreset(Aura, {
     password: {
       root: {
         borderRadius: '12px',
+      },
+    },
+    textarea: {
+      root: {
+        background: 'transparent',
+        borderColor: 'transparent',
+        hoverBorderColor: 'transparent',
+        focusBorderColor: 'transparent',
+        color: '#171717',
+        placeholderColor: '#666666',
+        shadow: 'none',
+        paddingX: '0',
+        paddingY: '0',
+        borderRadius: '12px',
+        focusRing: {
+          width: '0',
+          style: 'none',
+          color: 'transparent',
+          offset: '0',
+          shadow: 'none',
+        },
+      },
+    },
+    avatar: {
+      root: {
+        width: '1.5rem',
+        height: '1.5rem',
+        fontSize: '0.75rem',
+        background: '#171717',
+        color: '#ffffff',
+      },
+    },
+    listbox: {
+      root: {
+        background: 'transparent',
+        borderColor: 'transparent',
+        color: '#171717',
+        shadow: 'none',
+        borderRadius: '12px',
+      },
+      list: {
+        padding: '0',
+        gap: '2px',
+      },
+      option: {
+        color: '#171717',
+        focusBackground: '#eaeaea',
+        focusColor: '#171717',
+        selectedBackground: '#eaeaea',
+        selectedColor: '#171717',
+        selectedFocusBackground: '#eaeaea',
+        selectedFocusColor: '#171717',
+        borderRadius: '8px',
+        padding: '6px 10px',
+      },
+    },
+    menu: {
+      root: {
+        background: '#ffffff',
+        borderColor: '#eaeaea',
+        borderRadius: '12px',
+      },
+      list: {
+        padding: '6px',
+        gap: '2px',
+      },
+      item: {
+        color: '#171717',
+        focusBackground: '#eaeaea',
+        focusColor: '#171717',
+        borderRadius: '8px',
+        padding: '6px 10px',
+      },
+      separator: {
+        borderColor: '#eaeaea',
       },
     },
   },

@@ -1,14 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import { apiFetch } from '@/lib/api'
+import { listConversations, type Conversation } from '../api'
 
-export interface Conversation {
-  id: string
-  user_id: string
-  title: string
-  created_at: string
-}
+export type { Conversation } from '../api'
 
 export const useConversationsStore = defineStore('conversations', () => {
   const conversations = ref<Conversation[]>([])
@@ -19,7 +14,8 @@ export const useConversationsStore = defineStore('conversations', () => {
     loading.value = true
     error.value = ''
     try {
-      conversations.value = await apiFetch<Conversation[]>('/conversations')
+      const loaded = await listConversations()
+      conversations.value = [...loaded].sort((a, b) => b.created_at.localeCompare(a.created_at))
     } catch {
       error.value = 'Could not load your conversations.'
     } finally {
@@ -27,5 +23,10 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
-  return { conversations, loading, error, load }
+  return {
+    conversations,
+    loading,
+    error,
+    load,
+  }
 })

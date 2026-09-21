@@ -1,4 +1,5 @@
 import PrimeVue from 'primevue/config'
+import Tooltip from 'primevue/tooltip'
 import { createPinia } from 'pinia'
 import SuperTokens from 'supertokens-web-js'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
@@ -21,6 +22,7 @@ export function setupSuperTokens(): void {
 
 export function installProviders(app: App): void {
   app.use(createPinia())
+  app.directive('tooltip', Tooltip)
   app.use(PrimeVue, {
     theme: {
       preset: AiChatPreset,
