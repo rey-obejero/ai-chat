@@ -3,7 +3,7 @@ import type { UIMessage } from 'ai'
 
 import { messageText } from '../messages'
 
-defineProps<{ messages: UIMessage[] }>()
+defineProps<{ messages: UIMessage[]; working: boolean }>()
 </script>
 
 <template>
@@ -11,6 +11,11 @@ defineProps<{ messages: UIMessage[] }>()
     <div v-for="message in messages" :key="message.id" class="flex flex-col gap-1">
       <span class="text-caption uppercase tracking-wide text-subtext">{{ message.role }}</span>
       <p class="whitespace-pre-wrap text-body text-ink">{{ messageText(message) }}</p>
+    </div>
+
+    <div v-if="working" role="status" class="flex items-center gap-2 text-body-sm text-subtext">
+      <span class="h-2 w-2 animate-pulse rounded-full bg-ink/40 motion-reduce:animate-none" />
+      Assistant is working…
     </div>
   </div>
 </template>

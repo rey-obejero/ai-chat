@@ -53,6 +53,9 @@ const busy = computed(() => {
   const value = chat.status.value
   return value !== 'ready' && value !== 'error'
 })
+// `submitted` is the window between sending and the first token arriving, when
+// there is nothing in the list yet to show for the request.
+const working = computed(() => chat.status.value === 'submitted')
 const canSend = computed(() => draft.value.trim().length > 0 && !busy.value && !hydrating.value)
 
 const activeId = computed({
@@ -257,7 +260,7 @@ async function signOut(): Promise<void> {
     <main class="flex min-w-0 flex-1 flex-col bg-paper-white">
       <template v-if="conversationId">
         <div ref="scrollArea" class="min-h-0 flex-1 overflow-y-auto px-6 py-8">
-          <MessageList :messages="messages" />
+          <MessageList :messages="messages" :working="working" />
         </div>
         <div class="px-6 pb-6">
           <MessageComposer v-model="draft" :disabled="!canSend" @submit="submit" />
