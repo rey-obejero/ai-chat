@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 import ai_chat.auth.models  # noqa: F401  (register tables on metadata)
-import ai_chat.chat.models  # noqa: F401
+import ai_chat.conversations.models  # noqa: F401
 from ai_chat.shared.config import get_settings
 from ai_chat.shared.db import Base
 
