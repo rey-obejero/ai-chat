@@ -22,7 +22,7 @@ const router = createRouter({
       component: () => import('@/features/auth').then((m) => m.AuthCallbackView),
     },
     {
-      path: '/conversations',
+      path: '/conversations/:id?',
       name: 'conversations',
       component: () => import('@/features/conversations').then((m) => m.ConversationsView),
       meta: { requiresAuth: true },
