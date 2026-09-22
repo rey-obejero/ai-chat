@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     rate_limit_path_prefixes: list[str] = ["/api/v1/conversations"]
     rate_limit_fail_open: bool = True
 
+    # Durable per-user token quota (ADR-0024), layered under the provider's
+    # spend cap and separate from the request-rate limit above.
+    token_quota_enabled: bool = True
+    token_quota_tokens: int = 100_000
+    token_quota_period: str = "month"
+
     @property
     def supertokens_api_key_or_none(self) -> str | None:
         return self.supertokens_api_key or None
