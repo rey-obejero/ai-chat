@@ -3,6 +3,10 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: ".",
   fullyParallel: true,
+  // The whole suite shares one API process, one SuperTokens core and one
+  // Postgres. Over-subscribing workers starves them and replies time out, so
+  // the worker count is capped rather than left to the CPU heuristic.
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
