@@ -14,6 +14,7 @@ import IconSparkles from '~icons/lucide/sparkles'
 import IconSquarePen from '~icons/lucide/square-pen'
 
 import { useSessionStore } from '@/features/auth'
+import { SettingsDialog } from '@/features/settings'
 import { listMessages } from '../api'
 import ConversationList from '../components/ConversationList.vue'
 import MessageComposer from '../components/MessageComposer.vue'
@@ -29,6 +30,7 @@ const router = useRouter()
 const collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true')
 const draft = ref('')
 const accountMenu = ref()
+const settingsOpen = ref(false)
 const composer = ref<InstanceType<typeof MessageComposer> | null>(null)
 const scrollArea = ref<HTMLElement | null>(null)
 const hydrating = ref(false)
@@ -72,7 +74,7 @@ const initial = computed(() => (session.user?.email ?? '?').charAt(0).toUpperCas
 const accountItems = computed<MenuItem[]>(() => [
   { label: 'Personalization' },
   { label: 'Profile' },
-  { label: 'Settings' },
+  { label: 'Settings', command: () => (settingsOpen.value = true) },
   { separator: true },
   { label: 'Sign out', command: () => void signOut() },
 ])
@@ -315,5 +317,7 @@ async function signOut(): Promise<void> {
         </div>
       </template>
     </main>
+
+    <SettingsDialog v-model="settingsOpen" />
   </div>
 </template>

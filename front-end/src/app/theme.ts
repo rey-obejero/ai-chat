@@ -138,5 +138,21 @@ export const AiChatPreset = definePreset(Aura, {
         borderColor: '#eaeaea',
       },
     },
+    dialog: {
+      root: {
+        background: '#ffffff',
+        borderColor: '#eaeaea',
+        borderRadius: '12px',
+      },
+      header: {
+        padding: '20px 24px 0',
+      },
+      content: {
+        padding: '16px 24px 24px',
+      },
+      title: {
+        color: '#171717',
+      },
+    },
   },
 })
