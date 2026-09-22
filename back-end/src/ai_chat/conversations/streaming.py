@@ -9,8 +9,9 @@ from collections.abc import AsyncIterator, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ai_chat.conversations.models import Message
-from ai_chat.llm import ChatMessage, ChatProvider, LLMProviderError, Role
+from ai_chat.llm import ChatMessage, ChatProvider, LLMProviderError, Role, TokenUsage
 from ai_chat.shared import streaming as sse
+from ai_chat.usage import record
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ async def stream_reply(
     *,
     provider: ChatProvider,
     conversation_id: uuid.UUID,
+    user_id: str,
     history: Sequence[ChatMessage],
     session_factory: async_sessionmaker[AsyncSession],
 ) -> AsyncIterator[str]:
@@ -36,12 +38,15 @@ async def stream_reply(
     message_id = uuid.uuid4()
     text_id = f"text_{uuid.uuid4().hex}"
     collected: list[str] = []
+    usage: TokenUsage | None = None
 
     yield sse.start(str(message_id))
     yield sse.text_start(text_id)
 
     try:
         async for chunk in provider.stream_chat(history):
+            if chunk.usage is not None:
+                usage = chunk.usage
             if chunk.content:
                 collected.append(chunk.content)
                 yield sse.text_delta(text_id, chunk.content)
@@ -68,6 +73,19 @@ async def stream_reply(
             yield sse.DONE
             return
 
+    if usage is not None:
+        try:
+            await _record_usage(
+                session_factory,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                usage=usage,
+            )
+        except Exception:
+            # The tokens are already spent; accounting must not fail a reply
+            # that has otherwise succeeded.
+            logger.exception("Failed to record usage for conversation %s", conversation_id)
+
     yield sse.finish()
     yield sse.DONE
 
@@ -90,3 +108,14 @@ async def _persist_assistant_message(
             )
         )
         await session.commit()
+
+
+async def _record_usage(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    user_id: str,
+    conversation_id: uuid.UUID,
+    usage: TokenUsage,
+) -> None:
+    async with session_factory() as session:
+        await record(session, user_id=user_id, conversation_id=conversation_id, usage=usage)
