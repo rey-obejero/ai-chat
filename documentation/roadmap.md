@@ -32,10 +32,16 @@ Message list, streaming rendering, and the composer wired to the endpoint via
 `@ai-sdk/vue` with a custom transport, covered end to end against a deterministic
 mock provider (ADR-0022, ADR-0023).
 
-## Next: the token quota and a public deploy
+## Done: the token quota
 
-Per-user token accounting in Postgres on top of the request-rate limiter, then
-the capped OpenRouter key and a deploy (ADR-0019, ADR-0020).
+Per-user token spend is a Postgres ledger summed over a calendar period, with a
+route dependency that blocks a user who has exhausted their budget and a
+settings modal that reports the remaining allowance (ADR-0024).
+
+## Next: a public deploy
+
+The capped OpenRouter key, a single-VPS Compose stack behind Caddy with
+automatic TLS, and the deploy runbook.
 
 ## Deferred: containerized stack
 
