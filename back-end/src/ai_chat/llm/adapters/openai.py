@@ -55,7 +55,15 @@ class OpenAIChatProvider:
 
 
 def _to_chunk(event: Any) -> ChatChunk | None:
-    """Translate one SDK stream event; return None for events with no payload."""
+    """Translate one SDK stream event; return None for events with no payload.
+
+    Raises ``LLMProviderError`` for the mid-stream error frame OpenRouter sends:
+    by then the response is already committed as ``200``, so the failure can
+    only be surfaced to the caller.
+    """
+    if getattr(event, "error", None) is not None:
+        raise LLMProviderError(detail="The language model provider failed.")
+
     choices = getattr(event, "choices", None)
     if not choices:
         return None
@@ -63,6 +71,8 @@ def _to_chunk(event: Any) -> ChatChunk | None:
     delta = getattr(choice, "delta", None)
     content = getattr(delta, "content", None) or ""
     finish_reason = getattr(choice, "finish_reason", None)
+    if finish_reason == "error":
+        raise LLMProviderError(detail="The language model provider failed.")
     if not content and finish_reason is None:
         return None
     return ChatChunk(content=content, finish_reason=finish_reason)
