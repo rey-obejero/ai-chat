@@ -25,8 +25,10 @@ front-end/src/
 ├── features/
 │   ├── auth/               # index.ts is the public API
 │   │   ├── api.ts  stores/  components/  views/
-│   └── conversations/      # index.ts is the public API
-│       ├── api.ts  chat.ts  stores/  components/  views/
+│   ├── conversations/      # index.ts is the public API
+│   │   ├── api.ts  messages.ts  stores/  components/  views/
+│   ├── settings/           # the settings modal (Usage + Provider)
+│   └── usage/              # token-usage store + panel (ADR-0024)
 ├── components/             # global shared components
 ├── stores/                 # global stores (feature stores stay in features/)
 └── lib/api.ts              # fetch wrapper for /api/v1 (RFC 9457 aware)
