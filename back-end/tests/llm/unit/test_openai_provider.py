@@ -11,6 +11,7 @@ from ai_chat.llm.schemas import ChatMessage, Role
 def _event(
     content: str = "",
     finish_reason: str | None = None,
+    usage: SimpleNamespace | None = None,
     error: SimpleNamespace | None = None,
 ) -> SimpleNamespace:
     event = SimpleNamespace(
@@ -21,9 +22,19 @@ def _event(
             )
         ]
     )
+    if usage is not None:
+        event.usage = usage
     if error is not None:
         event.error = error
     return event
+
+
+def _usage(prompt: int = 5, completion: int = 2) -> SimpleNamespace:
+    return SimpleNamespace(
+        prompt_tokens=prompt,
+        completion_tokens=completion,
+        total_tokens=prompt + completion,
+    )
 
 
 class _FakeCompletions:
@@ -87,6 +98,7 @@ async def test_stream_chat_sends_expected_payload() -> None:
 
     assert completions.kwargs["model"] == "openai/gpt-4o-mini"
     assert completions.kwargs["stream"] is True
+    assert completions.kwargs["stream_options"] == {"include_usage": True}
     assert completions.kwargs["max_tokens"] == 256
     assert completions.kwargs["messages"] == [{"role": "user", "content": "hi"}]
 
@@ -114,6 +126,32 @@ async def test_provider_failure_becomes_domain_error() -> None:
             chunk
             async for chunk in provider.stream_chat([ChatMessage(role=Role.USER, content="hi")])
         ]
+
+
+async def test_stream_chat_captures_token_usage() -> None:
+    completions = _FakeCompletions([_event("ok"), _event(finish_reason="stop", usage=_usage())])
+    provider = _provider(completions)
+
+    chunks = [
+        chunk async for chunk in provider.stream_chat([ChatMessage(role=Role.USER, content="hi")])
+    ]
+
+    assert chunks[-1].usage is not None
+    assert chunks[-1].usage.total_tokens == 7
+
+
+async def test_stream_chat_accepts_a_usage_only_final_chunk() -> None:
+    # OpenAI proper reports usage on a chunk with an empty choices array.
+    usage_only = SimpleNamespace(choices=[], usage=_usage())
+    completions = _FakeCompletions([_event("ok"), usage_only])
+    provider = _provider(completions)
+
+    chunks = [
+        chunk async for chunk in provider.stream_chat([ChatMessage(role=Role.USER, content="hi")])
+    ]
+
+    assert chunks[-1].usage is not None
+    assert chunks[-1].usage.total_tokens == 7
 
 
 async def test_stream_chat_treats_a_mid_stream_error_frame_as_a_failure() -> None:

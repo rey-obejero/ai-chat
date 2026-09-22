@@ -8,7 +8,7 @@ from typing import Any
 from openai import AsyncOpenAI, OpenAIError
 
 from ai_chat.llm.exceptions import LLMProviderError
-from ai_chat.llm.schemas import ChatChunk, ChatMessage
+from ai_chat.llm.schemas import ChatChunk, ChatMessage, TokenUsage
 
 
 class OpenAIChatProvider:
@@ -40,6 +40,9 @@ class OpenAIChatProvider:
             "model": model or self._model,
             "messages": [{"role": m.role.value, "content": m.content} for m in messages],
             "stream": True,
+            # Ask for a final chunk carrying token usage. OpenRouter sends it
+            # regardless; OpenAI proper needs the option (ADR-0024).
+            "stream_options": {"include_usage": True},
         }
         if self._max_output_tokens is not None:
             payload["max_tokens"] = self._max_output_tokens
@@ -59,20 +62,32 @@ def _to_chunk(event: Any) -> ChatChunk | None:
 
     Raises ``LLMProviderError`` for the mid-stream error frame OpenRouter sends:
     by then the response is already committed as ``200``, so the failure can
-    only be surfaced to the caller.
+    only be surfaced to the caller (ADR-0024).
     """
     if getattr(event, "error", None) is not None:
         raise LLMProviderError(detail="The language model provider failed.")
 
+    usage = _to_usage(getattr(event, "usage", None))
     choices = getattr(event, "choices", None)
     if not choices:
-        return None
+        return ChatChunk(usage=usage) if usage is not None else None
+
     choice = choices[0]
     delta = getattr(choice, "delta", None)
     content = getattr(delta, "content", None) or ""
     finish_reason = getattr(choice, "finish_reason", None)
     if finish_reason == "error":
         raise LLMProviderError(detail="The language model provider failed.")
-    if not content and finish_reason is None:
+    if not content and finish_reason is None and usage is None:
         return None
-    return ChatChunk(content=content, finish_reason=finish_reason)
+    return ChatChunk(content=content, finish_reason=finish_reason, usage=usage)
+
+
+def _to_usage(usage: Any) -> TokenUsage | None:
+    if usage is None:
+        return None
+    return TokenUsage(
+        prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+        completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        total_tokens=getattr(usage, "total_tokens", 0) or 0,
+    )
