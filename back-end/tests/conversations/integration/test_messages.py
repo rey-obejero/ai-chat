@@ -4,7 +4,8 @@ import uuid
 from ai_chat.auth import get_current_user_id
 from ai_chat.auth.models import User
 from ai_chat.conversations.models import Conversation, Message
-from ai_chat.llm import ChatChunk, get_chat_provider
+from ai_chat.llm import ChatChunk, TokenUsage, get_chat_provider
+from ai_chat.usage import service as usage_service
 
 
 class _FakeProvider:
@@ -178,3 +179,53 @@ async def test_messages_are_ordered_oldest_first(session_factory) -> None:
 
     assert [row.content for row in rows] == ["first", "second"]
     assert all(isinstance(row, Message) for row in rows)
+
+
+async def test_a_spent_quota_blocks_the_next_reply(
+    quota_app, quota_client, session_factory
+) -> None:
+    conversation_id = await _seed_conversation(session_factory)
+    _current_user(quota_app)
+    _use_provider(quota_app, [ChatChunk(content="never sent")])
+    async with session_factory() as session:
+        await usage_service.record(
+            session,
+            user_id="user-1",
+            conversation_id=None,
+            usage=TokenUsage(total_tokens=1000),
+        )
+
+    response = await quota_client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        json={"content": "Hello"},
+    )
+
+    assert response.status_code == 429
+    body = response.json()
+    assert body["code"] == "QUOTA_EXCEEDED"
+    assert body["retry_after"] >= 0
+
+    # The blocked request must not have persisted the user turn.
+    history = await quota_client.get(f"/api/v1/conversations/{conversation_id}/messages")
+    assert history.json() == []
+
+
+async def test_a_reply_records_its_token_usage(app, client, session_factory) -> None:
+    conversation_id = await _seed_conversation(session_factory)
+    _current_user(app)
+    _use_provider(
+        app,
+        [
+            ChatChunk(content="Hi"),
+            ChatChunk(usage=TokenUsage(prompt_tokens=7, completion_tokens=3, total_tokens=10)),
+        ],
+    )
+
+    response = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages",
+        json={"content": "Hello"},
+    )
+
+    assert response.status_code == 200
+    usage = await client.get("/api/v1/usage")
+    assert usage.json()["used"] == 10

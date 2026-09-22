@@ -17,6 +17,7 @@ from ai_chat.conversations.streaming import build_history, stream_reply
 from ai_chat.llm import ChatProvider, get_chat_provider
 from ai_chat.shared.db import get_session, get_session_factory
 from ai_chat.shared.streaming import STREAM_HEADERS
+from ai_chat.usage import enforce_quota
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -58,6 +59,7 @@ async def send_message(
     session: AsyncSession = Depends(get_session),
     session_factory: async_sessionmaker[AsyncSession] = Depends(get_session_factory),
     provider: ChatProvider = Depends(get_chat_provider),
+    _quota: None = Depends(enforce_quota),
 ) -> StreamingResponse:
     """Persist the user turn, then stream the assistant reply as SSE."""
     conversation = await get_owned_conversation(session, user_id, conversation_id)
@@ -67,6 +69,7 @@ async def send_message(
     events = stream_reply(
         provider=provider,
         conversation_id=conversation.id,
+        user_id=user_id,
         history=history,
         session_factory=session_factory,
     )
