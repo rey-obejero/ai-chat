@@ -26,6 +26,17 @@ const finishEvent = {
   choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
 };
 
+// OpenRouter sends a terminal chunk carrying usage, just before [DONE]. The
+// back-end records it against the user's token quota.
+const usageEvent = {
+  id: "chatcmpl-e2e",
+  object: "chat.completion.chunk",
+  created: 0,
+  model: "e2e/mock",
+  choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+  usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+};
+
 const server = createServer((request, response) => {
   if (request.method === "GET" && request.url === "/health") {
     response.writeHead(200, { "content-type": "application/json" });
@@ -73,6 +84,7 @@ const server = createServer((request, response) => {
 
       clearInterval(timer);
       response.write(`data: ${JSON.stringify(finishEvent)}\n\n`);
+      response.write(`data: ${JSON.stringify(usageEvent)}\n\n`);
       response.write("data: [DONE]\n\n");
       response.end();
     }, 15);
