@@ -29,6 +29,8 @@ back-end/
 │   ├── conversations/     # feature slice (models, schemas, service, router,
 │   │                      #   streaming) — conversations + messages
 │   ├── llm/               # feature slice (port, schemas, service, adapters/) — ADR-0018
+│   ├── usage/             # feature slice (models, schemas, service, router) —
+│   │                      #   token accounting + quota, ADR-0024
 │   └── documents/         # future slice
 ├── tests/<feature>/{unit,integration}/
 └── alembic/versions/      # migrations
