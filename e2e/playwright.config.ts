@@ -7,6 +7,11 @@ export default defineConfig({
   // Postgres. Over-subscribing workers starves them and replies time out, so
   // the worker count is capped rather than left to the CPU heuristic.
   workers: 2,
+  // Sign-in and sign-up round-trip through SuperTokens before the router
+  // navigates; under parallel load the default 5s assertion budget is tight.
+  expect: {
+    timeout: 10_000,
+  },
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
