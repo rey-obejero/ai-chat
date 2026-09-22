@@ -8,6 +8,7 @@ from ai_chat.conversations import router as conversations_router
 from ai_chat.shared.config import Settings, get_settings
 from ai_chat.shared.exceptions import register_exception_handlers
 from ai_chat.shared.rate_limit import RateLimitMiddleware, build_rate_limiter
+from ai_chat.usage import router as usage_router
 
 
 def create_app(settings: Settings | None = None, *, init_auth: bool = True) -> FastAPI:
@@ -23,6 +24,9 @@ def create_app(settings: Settings | None = None, *, init_auth: bool = True) -> F
                 await limiter.aclose()
 
     app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+    # Dependencies read the settings the app was built with, not the global
+    # cached ones, so tests can build an app with a different configuration.
+    app.state.settings = settings
 
     # Added before the SuperTokens middleware so the latter stays outermost and
     # runs first. The limiter resolves identity itself, because middleware runs
@@ -54,6 +58,7 @@ def create_app(settings: Settings | None = None, *, init_auth: bool = True) -> F
 
     api.include_router(auth_router)
     api.include_router(conversations_router)
+    api.include_router(usage_router)
     app.include_router(api)
 
     return app

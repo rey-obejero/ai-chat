@@ -26,11 +26,8 @@ async def session_factory():
     await engine.dispose()
 
 
-@pytest_asyncio.fixture
-async def app(session_factory):
-    # Rate limiting is exercised by its own tests against the middleware
-    # directly; the shared app fixture keeps it off so auth is not involved.
-    application = create_app(Settings(_env_file=None, rate_limit_enabled=False), init_auth=False)
+def _build_app(session_factory, settings):
+    application = create_app(settings, init_auth=False)
 
     async def override_session():
         async with session_factory() as session:
@@ -42,7 +39,39 @@ async def app(session_factory):
 
 
 @pytest_asyncio.fixture
+async def app(session_factory):
+    # Rate limiting is exercised by its own tests against the middleware
+    # directly; the shared app fixture keeps it off so auth is not involved.
+    # The token quota is off too — its tests opt in through quota_app.
+    return _build_app(
+        session_factory,
+        Settings(_env_file=None, rate_limit_enabled=False, token_quota_enabled=False),
+    )
+
+
+@pytest_asyncio.fixture
+async def quota_app(session_factory):
+    """An app with the token quota on and a deliberately tiny budget."""
+    return _build_app(
+        session_factory,
+        Settings(
+            _env_file=None,
+            rate_limit_enabled=False,
+            token_quota_enabled=True,
+            token_quota_tokens=1000,
+        ),
+    )
+
+
+@pytest_asyncio.fixture
 async def client(app):
     transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+        yield http_client
+
+
+@pytest_asyncio.fixture
+async def quota_client(quota_app):
+    transport = ASGITransport(app=quota_app)
     async with AsyncClient(transport=transport, base_url="http://test") as http_client:
         yield http_client
