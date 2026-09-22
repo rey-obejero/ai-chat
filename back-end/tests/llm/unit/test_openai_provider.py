@@ -8,8 +8,12 @@ from ai_chat.llm.exceptions import LLMProviderError
 from ai_chat.llm.schemas import ChatMessage, Role
 
 
-def _event(content: str = "", finish_reason: str | None = None) -> SimpleNamespace:
-    return SimpleNamespace(
+def _event(
+    content: str = "",
+    finish_reason: str | None = None,
+    error: SimpleNamespace | None = None,
+) -> SimpleNamespace:
+    event = SimpleNamespace(
         choices=[
             SimpleNamespace(
                 delta=SimpleNamespace(content=content),
@@ -17,6 +21,9 @@ def _event(content: str = "", finish_reason: str | None = None) -> SimpleNamespa
             )
         ]
     )
+    if error is not None:
+        event.error = error
+    return event
 
 
 class _FakeCompletions:
@@ -100,6 +107,25 @@ async def test_stream_chat_allows_model_override() -> None:
 
 async def test_provider_failure_becomes_domain_error() -> None:
     completions = _FakeCompletions([], error=OpenAIError("boom"))
+    provider = _provider(completions)
+
+    with pytest.raises(LLMProviderError):
+        _ = [
+            chunk
+            async for chunk in provider.stream_chat([ChatMessage(role=Role.USER, content="hi")])
+        ]
+
+
+async def test_stream_chat_treats_a_mid_stream_error_frame_as_a_failure() -> None:
+    completions = _FakeCompletions(
+        [
+            _event("partial"),
+            _event(
+                finish_reason="error",
+                error=SimpleNamespace(code="server_error", message="provider disconnected"),
+            ),
+        ]
+    )
     provider = _provider(completions)
 
     with pytest.raises(LLMProviderError):
