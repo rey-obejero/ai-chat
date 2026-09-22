@@ -29,6 +29,7 @@ const ERROR_COPY: Record<string, string> = {
   LLM_NOT_CONFIGURED: 'The assistant has not been configured yet.',
   LLM_PROVIDER_ERROR: 'The assistant could not be reached. Try again.',
   RATE_LIMITED: 'Too many messages too quickly. Wait a moment, then try again.',
+  QUOTA_EXCEEDED: 'You have used your token quota for this period. Try again after it resets.',
   NOT_AUTHENTICATED: 'Your session has expired. Sign in again.',
   NOT_FOUND: 'That conversation no longer exists.',
   VALIDATION_ERROR: 'That message could not be sent.',
