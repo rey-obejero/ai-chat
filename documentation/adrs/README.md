@@ -77,3 +77,4 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0021](0021-llm-provider-test-doubles.md) | LLM provider tests inject the SDK client | Accepted | 2026-09-22 |
 | [0022](0022-streaming-endpoint-owns-history.md) | The streaming endpoint owns conversation history | Accepted | 2026-09-22 |
 | [0023](0023-e2e-mock-provider.md) | Chat end-to-end tests run against a mock provider | Accepted | 2026-09-22 |
+| [0024](0024-durable-token-quota.md) | The token quota is a Postgres ledger with a calendar period | Accepted | 2026-09-22 |
