@@ -62,7 +62,7 @@ async function submit(): Promise<void> {
           v-model="email"
           type="email"
           autocomplete="email"
-          placeholder="name@company.com"
+          placeholder="you@example.com"
           required
           class="w-full"
         />
@@ -80,10 +80,6 @@ async function submit(): Promise<void> {
           fluid
         />
       </AuthField>
-
-      <div class="flex justify-end">
-        <Button type="button" link size="small" label="Forgot password?" class="px-0" />
-      </div>
 
       <p v-if="error" class="flex items-center gap-1.5 text-sm font-medium text-ink" role="alert">
         <IconCircleAlert class="shrink-0 text-icon" />

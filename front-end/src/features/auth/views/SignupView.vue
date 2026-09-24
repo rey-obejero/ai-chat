@@ -57,7 +57,7 @@ async function submit(): Promise<void> {
           v-model="email"
           type="email"
           autocomplete="email"
-          placeholder="name@company.com"
+          placeholder="you@example.com"
           required
           class="w-full"
         />
