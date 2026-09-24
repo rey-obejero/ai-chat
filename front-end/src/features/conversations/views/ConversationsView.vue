@@ -190,13 +190,15 @@ async function signOut(): Promise<void> {
     <aside
       id="sidebar"
       class="flex shrink-0 flex-col border-r border-line bg-canvas transition-[width] duration-200 ease-out motion-reduce:transition-none"
-      :class="collapsed ? 'w-16' : 'w-64'"
+      :class="collapsed ? 'w-16' : 'w-64 max-sm:w-16'"
     >
       <div
         class="flex items-center px-2 pt-3"
         :class="collapsed ? 'justify-center' : 'justify-between'"
       >
-        <span v-if="!collapsed" class="px-2.5 text-body font-medium text-ink">AI Chat</span>
+        <span v-if="!collapsed" class="px-2.5 text-body font-medium text-ink max-sm:hidden"
+          >AI Chat</span
+        >
         <Button
           text
           rounded
@@ -220,7 +222,7 @@ async function signOut(): Promise<void> {
         >
           <span class="flex w-full items-center gap-2.5" :class="collapsed ? 'justify-center' : ''">
             <IconSquarePen class="shrink-0 text-icon" />
-            <span v-if="!collapsed">New conversation</span>
+            <span v-if="!collapsed" class="max-sm:hidden">New conversation</span>
           </span>
         </Button>
       </div>
@@ -229,18 +231,18 @@ async function signOut(): Promise<void> {
         <Button text fluid aria-label="Library" v-tooltip.right="collapsed ? 'Library' : null">
           <span class="flex w-full items-center gap-2.5" :class="collapsed ? 'justify-center' : ''">
             <IconLibrary class="shrink-0 text-icon" />
-            <span v-if="!collapsed">Library</span>
+            <span v-if="!collapsed" class="max-sm:hidden">Library</span>
           </span>
         </Button>
         <Button text fluid aria-label="Skills" v-tooltip.right="collapsed ? 'Skills' : null">
           <span class="flex w-full items-center gap-2.5" :class="collapsed ? 'justify-center' : ''">
             <IconSparkles class="shrink-0 text-icon" />
-            <span v-if="!collapsed">Skills</span>
+            <span v-if="!collapsed" class="max-sm:hidden">Skills</span>
           </span>
         </Button>
       </nav>
 
-      <div v-if="!collapsed" class="mt-4 min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+      <div v-if="!collapsed" class="mt-6 min-h-0 flex-1 overflow-y-auto px-2 pb-2 max-sm:hidden">
         <ConversationList
           v-model:active-id="activeId"
           :conversations="conversations.conversations"
@@ -263,7 +265,7 @@ async function signOut(): Promise<void> {
             <Avatar :label="initial" shape="circle" />
             <span
               v-if="!collapsed"
-              class="min-w-0 flex-1 truncate text-left text-body-sm text-subtext"
+              class="min-w-0 flex-1 truncate text-left text-body-sm text-subtext max-sm:hidden"
             >
               {{ session.user?.email }}
             </span>

@@ -28,8 +28,8 @@ const resetsAt = computed(() => {
 
 <template>
   <div class="space-y-3">
-    <p v-if="usage.loading" class="text-body-sm text-subtext">Loading usage…</p>
-    <p v-else-if="usage.error" class="text-body-sm text-subtext">{{ usage.error }}</p>
+    <p v-if="usage.loading" class="text-body-sm text-subtext" role="status">Loading usage…</p>
+    <p v-else-if="usage.error" class="text-body-sm text-subtext" role="alert">{{ usage.error }}</p>
 
     <template v-else-if="state">
       <div>
@@ -52,6 +52,7 @@ const resetsAt = computed(() => {
         v-if="state.limit !== null"
         class="h-2 w-full overflow-hidden rounded-full bg-line"
         role="progressbar"
+        aria-label="Monthly token usage"
         :aria-valuenow="percentUsed"
         aria-valuemin="0"
         aria-valuemax="100"
