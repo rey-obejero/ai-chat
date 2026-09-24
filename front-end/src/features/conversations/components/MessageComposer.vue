@@ -34,7 +34,7 @@ defineExpose({ focus })
 
 <template>
   <div
-    class="mx-auto w-full max-w-2xl rounded-xl border border-line bg-paper-white p-3 transition-colors focus-within:border-ink/60"
+    class="mx-auto w-full max-w-2xl rounded-xl border border-line bg-paper-white p-3 transition-colors focus-within:border-ink/60 focus-within:ring-2 focus-within:ring-ink/15"
   >
     <Textarea
       ref="textarea"
@@ -43,7 +43,7 @@ defineExpose({ focus })
       rows="1"
       placeholder="Ask a question…"
       aria-label="Message"
-      class="w-full"
+      class="w-full text-base sm:text-sm"
       @keydown="onKeydown"
     />
     <div class="mt-2 flex items-center justify-between">

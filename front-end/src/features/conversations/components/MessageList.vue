@@ -8,9 +8,13 @@ defineProps<{ messages: UIMessage[]; working: boolean }>()
 
 <template>
   <div class="mx-auto flex w-full max-w-2xl flex-col gap-6">
-    <div v-for="message in messages" :key="message.id" class="flex flex-col gap-1">
-      <span class="text-caption uppercase tracking-wide text-subtext">{{ message.role }}</span>
-      <p class="whitespace-pre-wrap text-body text-ink">{{ messageText(message) }}</p>
+    <div v-for="message in messages" :key="message.id" class="flex flex-col gap-1.5">
+      <span class="text-caption uppercase tracking-wide text-subtext">
+        {{ message.role === 'user' ? 'You' : 'Assistant' }}
+      </span>
+      <p class="whitespace-pre-wrap text-body leading-relaxed text-ink">
+        {{ messageText(message) }}
+      </p>
     </div>
 
     <div v-if="working" role="status" class="flex items-center gap-2 text-body-sm text-subtext">

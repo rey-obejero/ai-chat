@@ -16,10 +16,10 @@ defineProps<{
   <div>
     <p class="px-3 pb-1 pt-2 text-caption text-subtext">Conversations</p>
 
-    <p v-if="loading" class="px-3 py-1.5 text-body-sm text-subtext">Loading…</p>
-    <p v-else-if="error" class="px-3 py-1.5 text-body-sm text-subtext">{{ error }}</p>
-    <p v-else-if="conversations.length === 0" class="px-3 py-1.5 text-body-sm text-subtext">
-      No conversations yet.
+    <p v-if="loading" class="px-3 py-2 text-body-sm text-subtext" role="status">Loading…</p>
+    <p v-else-if="error" class="px-3 py-2 text-body-sm text-subtext" role="alert">{{ error }}</p>
+    <p v-else-if="conversations.length === 0" class="px-3 py-2 text-body-sm text-subtext">
+      No conversations yet. Start one above.
     </p>
     <Listbox
       v-else
