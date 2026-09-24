@@ -11,6 +11,7 @@ const error = ref('')
 const pending = ref<'google' | 'github' | null>(null)
 
 async function signInWith(thirdPartyId: 'google' | 'github'): Promise<void> {
+  if (pending.value) return
   error.value = ''
   pending.value = thirdPartyId
   try {
@@ -33,8 +34,9 @@ async function signInWith(thirdPartyId: 'google' | 'github'): Promise<void> {
         type="button"
         severity="secondary"
         outlined
-        class="justify-center text-sm"
+        class="justify-center text-sm !text-ink hover:!bg-canvas"
         :loading="pending === 'google'"
+        :disabled="pending !== null"
         @click="signInWith('google')"
       >
         <IconGoogle class="mr-2 text-base" />
@@ -44,8 +46,9 @@ async function signInWith(thirdPartyId: 'google' | 'github'): Promise<void> {
         type="button"
         severity="secondary"
         outlined
-        class="justify-center text-sm"
+        class="justify-center text-sm !text-ink hover:!bg-canvas"
         :loading="pending === 'github'"
+        :disabled="pending !== null"
         @click="signInWith('github')"
       >
         <IconGithub class="mr-2 text-base" />

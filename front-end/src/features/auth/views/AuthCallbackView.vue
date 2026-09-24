@@ -34,6 +34,7 @@ onMounted(async () => {
           v-if="!error"
           :style="{ width: '1.25rem', height: '1.25rem' }"
           stroke-width="6"
+          class="motion-reduce:hidden"
           aria-label="Signing in"
         />
         <p class="text-sm">{{ error || 'Completing sign-in…' }}</p>
