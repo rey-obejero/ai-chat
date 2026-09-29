@@ -10,16 +10,19 @@ const router = createRouter({
       path: '/sign-in',
       name: 'sign-in',
       component: () => import('@/features/auth').then((m) => m.SignInView),
+      meta: { title: 'Sign In' },
     },
     {
       path: '/sign-up',
       name: 'sign-up',
       component: () => import('@/features/auth').then((m) => m.SignupView),
+      meta: { title: 'Sign Up' },
     },
     {
       path: '/auth/callback',
       name: 'auth-callback',
       component: () => import('@/features/auth').then((m) => m.AuthCallbackView),
+      meta: { title: 'Sign In' },
     },
     {
       path: '/conversations/:id?',
@@ -45,6 +48,11 @@ router.beforeEach(async (to) => {
   }
 
   return true
+})
+
+router.afterEach((to) => {
+  const page = to.meta.title as string | undefined
+  document.title = page ? `${page} | AI Chat` : 'AI Chat'
 })
 
 export { router }

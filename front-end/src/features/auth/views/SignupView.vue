@@ -6,7 +6,9 @@ import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
-import IconCircleAlert from '~icons/lucide/circle-alert'
+import IconEye from '~icons/lucide/eye'
+import IconEyeClosed from '~icons/lucide/eye-closed'
+import IconLoaderCircle from '~icons/lucide/loader-circle'
 
 import AuthField from '../components/AuthField.vue'
 import AuthScreen from '../components/AuthScreen.vue'
@@ -49,51 +51,83 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <AuthScreen title="Sign Up" intro="Create your account to get started.">
+  <AuthScreen title="Sign up" intro="Create an account to get started">
     <form class="space-y-5" @submit.prevent="submit">
-      <AuthField label="Email" html-for="email">
+      <AuthField>
         <InputText
           id="email"
           v-model="email"
           type="email"
           autocomplete="email"
-          placeholder="you@example.com"
+          placeholder="Enter your email"
+          aria-label="Email"
           required
           class="w-full"
         />
       </AuthField>
 
-      <AuthField label="Password" html-for="password">
+      <AuthField>
         <Password
           input-id="password"
           v-model="password"
           :feedback="false"
           toggle-mask
           autocomplete="new-password"
-          placeholder="At least 8 characters"
+          placeholder="Enter your password"
+          aria-label="Password"
           required
           fluid
-        />
+        >
+          <template #unmaskicon="{ toggleCallback }">
+            <button
+              type="button"
+              aria-label="Show password"
+              class="p-password-toggle-mask-icon p-password-unmask-icon flex !-mt-3 !size-6 cursor-pointer items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
+              @click="toggleCallback"
+            >
+              <IconEyeClosed class="size-4" />
+            </button>
+          </template>
+          <template #maskicon="{ toggleCallback }">
+            <button
+              type="button"
+              aria-label="Hide password"
+              class="p-password-toggle-mask-icon p-password-mask-icon flex !-mt-3 !size-6 cursor-pointer items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
+              @click="toggleCallback"
+            >
+              <IconEye class="size-4" />
+            </button>
+          </template>
+        </Password>
       </AuthField>
 
-      <p v-if="error" class="flex items-center gap-1.5 text-sm font-medium text-ink" role="alert">
-        <IconCircleAlert class="shrink-0 text-icon" />
+      <p v-if="error" class="text-sm font-medium text-danger" role="alert">
         {{ error }}
       </p>
 
-      <Button type="submit" label="Create account" :loading="loading" class="w-full" />
+      <Button
+        type="submit"
+        :label="loading ? undefined : 'Continue'"
+        :loading="loading"
+        :aria-busy="loading"
+        :aria-label="loading ? 'Continuing' : undefined"
+        class="w-full text-sm transition-opacity enabled:hover:!bg-ink enabled:hover:opacity-90"
+      >
+        <template #loadingicon>
+          <IconLoaderCircle class="animate-spin" />
+        </template>
+      </Button>
 
-      <div class="flex items-center gap-3">
-        <span class="h-px flex-1 bg-line" />
-        <span class="text-xs text-subtext">or</span>
-        <span class="h-px flex-1 bg-line" />
-      </div>
+      <p class="text-center text-xs font-medium uppercase tracking-wide text-subtext">or</p>
 
       <SocialButtons />
 
       <p class="text-center text-sm text-subtext">
         Already have an account?
-        <RouterLink to="/sign-in" class="text-ink underline underline-offset-4 hover:text-subtext">
+        <RouterLink
+          to="/sign-in"
+          class="rounded-sm font-medium text-tertiary hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
+        >
           Sign in
         </RouterLink>
       </p>

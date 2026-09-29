@@ -42,7 +42,7 @@ onMounted(async () => {
       <RouterLink
         v-if="error"
         to="/sign-in"
-        class="text-sm text-ink underline underline-offset-4 hover:text-subtext"
+        class="rounded-sm text-sm font-medium text-tertiary hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
       >
         Back to sign in
       </RouterLink>

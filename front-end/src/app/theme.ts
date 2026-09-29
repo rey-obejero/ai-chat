@@ -28,8 +28,8 @@ export const AiChatPreset = definePreset(Aura, {
         primary: {
           color: '{primary.500}',
           inverseColor: '#ffffff',
-          hoverColor: '{primary.600}',
-          activeColor: '{primary.700}',
+          hoverColor: 'color-mix(in srgb, var(--color-ink) 90%, var(--color-canvas))',
+          activeColor: 'color-mix(in srgb, var(--color-ink) 90%, var(--color-canvas))',
         },
         highlight: {
           background: '#171717',
@@ -44,6 +44,13 @@ export const AiChatPreset = definePreset(Aura, {
           200: '#eaeaea',
           300: '#d4d4d4',
         },
+        formField: {
+          color: 'var(--color-ink)',
+          borderColor: 'var(--color-line)',
+          hoverBorderColor: '#d4d4d4',
+          placeholderColor: 'var(--color-subtext)',
+          iconColor: 'var(--color-icon)',
+        },
       },
     },
   },
@@ -51,6 +58,18 @@ export const AiChatPreset = definePreset(Aura, {
     button: {
       root: {
         borderRadius: '8px',
+      },
+      colorScheme: {
+        light: {
+          outlined: {
+            secondary: {
+              hoverBackground: 'color-mix(in srgb, var(--color-line) 40%, transparent)',
+              activeBackground: 'color-mix(in srgb, var(--color-line) 60%, transparent)',
+              borderColor: 'var(--color-line)',
+              color: 'var(--color-ink)',
+            },
+          },
+        },
       },
     },
     inputtext: {
