@@ -3,9 +3,8 @@ import Button from 'primevue/button'
 import ThirdParty from 'supertokens-web-js/recipe/thirdparty'
 import { ref } from 'vue'
 
-import IconCircleAlert from '~icons/lucide/circle-alert'
-import IconGithub from '~icons/tabler/brand-github'
-import IconGoogle from '~icons/tabler/brand-google'
+import IconGithub from '~icons/logos/github-icon'
+import IconGoogle from '~icons/logos/google-icon'
 
 const error = ref('')
 const pending = ref<'google' | 'github' | null>(null)
@@ -34,7 +33,7 @@ async function signInWith(thirdPartyId: 'google' | 'github'): Promise<void> {
         type="button"
         severity="secondary"
         outlined
-        class="justify-center text-sm !text-ink hover:!bg-canvas"
+        class="justify-center text-sm"
         :loading="pending === 'google'"
         :disabled="pending !== null"
         @click="signInWith('google')"
@@ -46,7 +45,7 @@ async function signInWith(thirdPartyId: 'google' | 'github'): Promise<void> {
         type="button"
         severity="secondary"
         outlined
-        class="justify-center text-sm !text-ink hover:!bg-canvas"
+        class="justify-center text-sm"
         :loading="pending === 'github'"
         :disabled="pending !== null"
         @click="signInWith('github')"
@@ -55,12 +54,7 @@ async function signInWith(thirdPartyId: 'google' | 'github'): Promise<void> {
         Continue with GitHub
       </Button>
     </div>
-    <p
-      v-if="error"
-      class="flex items-center justify-center gap-1.5 text-sm font-medium text-ink"
-      role="alert"
-    >
-      <IconCircleAlert class="shrink-0 text-icon" />
+    <p v-if="error" class="text-center text-sm font-medium text-danger" role="alert">
       {{ error }}
     </p>
   </div>
