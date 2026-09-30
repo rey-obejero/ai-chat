@@ -4,12 +4,13 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import { ref } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import IconEye from '~icons/lucide/eye'
 import IconEyeClosed from '~icons/lucide/eye-closed'
 import IconLoaderCircle from '~icons/lucide/loader-circle'
 
+import AppLink from '@/components/AppLink.vue'
 import AuthField from '../components/AuthField.vue'
 import AuthScreen from '../components/AuthScreen.vue'
 import SocialButtons from '../components/SocialButtons.vue'
@@ -105,12 +106,7 @@ async function submit(): Promise<void> {
           </template>
         </Password>
         <div class="flex justify-end pt-1">
-          <button
-            type="button"
-            class="cursor-pointer rounded-sm py-1 text-sm text-tertiary hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
-          >
-            Forgot password?
-          </button>
+          <AppLink class="py-1">Forgot password?</AppLink>
         </div>
       </AuthField>
 
@@ -137,12 +133,7 @@ async function submit(): Promise<void> {
 
       <p class="text-center text-sm text-subtext">
         Don't have an account?
-        <RouterLink
-          to="/sign-up"
-          class="rounded-sm font-medium text-tertiary hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
-        >
-          Sign up
-        </RouterLink>
+        <AppLink to="/sign-up" inline>Sign up</AppLink>
       </p>
     </form>
   </AuthScreen>

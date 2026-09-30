@@ -1,24 +1,20 @@
 <script setup lang="ts">
 import { useChat } from '@ai-sdk/vue'
 import Avatar from 'primevue/avatar'
-import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import IconLibrary from '~icons/lucide/library'
-import IconPanelLeftClose from '~icons/lucide/panel-left-close'
-import IconPanelLeftOpen from '~icons/lucide/panel-left-open'
-import IconSparkles from '~icons/lucide/sparkles'
-import IconSquarePen from '~icons/lucide/square-pen'
-
+import RootLayout from '@/components/layouts/RootLayout.vue'
+import SidebarGroup from '@/components/layouts/SidebarGroup.vue'
 import { useSessionStore } from '@/features/auth'
 import { SettingsDialog } from '@/features/settings'
 import { listMessages } from '../api'
 import ConversationList from '../components/ConversationList.vue'
 import MessageComposer from '../components/MessageComposer.vue'
 import MessageList from '../components/MessageList.vue'
+import SuggestionChips from '../components/SuggestionChips.vue'
 import { createConversationTransport, describeError, toUIMessages } from '../messages'
 import { useConversationsStore } from '../stores/conversations'
 
@@ -39,6 +35,10 @@ const conversationId = computed(() => {
   const id = route.params.id
   return typeof id === 'string' && id.length > 0 ? id : null
 })
+
+const title = computed(
+  () => conversations.conversations.find((item) => item.id === conversationId.value)?.title ?? '',
+)
 
 const chat = useChat({
   transport: createConversationTransport(() => conversationId.value),
@@ -142,10 +142,6 @@ async function focusComposer(): Promise<void> {
   await composer.value?.focus()
 }
 
-function toggleCollapsed(): void {
-  collapsed.value = !collapsed.value
-}
-
 function toggleAccount(event: Event): void {
   accountMenu.value?.toggle(event)
 }
@@ -153,6 +149,11 @@ function toggleAccount(event: Event): void {
 async function newConversation(): Promise<void> {
   const created = await conversations.create()
   await router.push({ name: 'conversations', params: { id: created.id } })
+}
+
+async function selectSuggestion(prompt: string): Promise<void> {
+  draft.value = prompt
+  await focusComposer()
 }
 
 async function submit(): Promise<void> {
@@ -186,108 +187,55 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex h-screen bg-paper-white text-ink">
-    <aside
-      id="sidebar"
-      class="flex shrink-0 flex-col border-r border-line bg-canvas transition-[width] duration-200 ease-out motion-reduce:transition-none"
-      :class="collapsed ? 'w-16' : 'w-64 max-sm:w-16'"
-    >
-      <div
-        class="flex items-center px-2 pt-3"
-        :class="collapsed ? 'justify-center' : 'justify-between'"
-      >
-        <span v-if="!collapsed" class="px-2.5 text-body font-medium text-ink max-sm:hidden"
-          >AI Chat</span
-        >
-        <Button
-          text
-          rounded
-          :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-          :aria-expanded="!collapsed"
-          aria-controls="sidebar"
-          @click="toggleCollapsed"
-        >
-          <IconPanelLeftClose v-if="!collapsed" class="text-icon" />
-          <IconPanelLeftOpen v-else class="text-icon" />
-        </Button>
-      </div>
+  <RootLayout v-model:collapsed="collapsed" @new-conversation="newConversation">
+    <template #title>{{ title }}</template>
 
-      <div class="px-2 pt-2">
-        <Button
-          text
-          fluid
-          aria-label="New conversation"
-          v-tooltip.right="collapsed ? 'New conversation' : null"
-          @click="newConversation"
-        >
-          <span class="flex w-full items-center gap-2.5" :class="collapsed ? 'justify-center' : ''">
-            <IconSquarePen class="shrink-0 text-icon" />
-            <span v-if="!collapsed" class="max-sm:hidden">New conversation</span>
-          </span>
-        </Button>
-      </div>
-
-      <nav class="px-2 pt-1">
-        <Button text fluid aria-label="Library" v-tooltip.right="collapsed ? 'Library' : null">
-          <span class="flex w-full items-center gap-2.5" :class="collapsed ? 'justify-center' : ''">
-            <IconLibrary class="shrink-0 text-icon" />
-            <span v-if="!collapsed" class="max-sm:hidden">Library</span>
-          </span>
-        </Button>
-        <Button text fluid aria-label="Skills" v-tooltip.right="collapsed ? 'Skills' : null">
-          <span class="flex w-full items-center gap-2.5" :class="collapsed ? 'justify-center' : ''">
-            <IconSparkles class="shrink-0 text-icon" />
-            <span v-if="!collapsed" class="max-sm:hidden">Skills</span>
-          </span>
-        </Button>
-      </nav>
-
-      <div v-if="!collapsed" class="mt-6 min-h-0 flex-1 overflow-y-auto px-2 pb-2 max-sm:hidden">
+    <template #sidebar>
+      <SidebarGroup title="Projects" storage-key="projects" />
+      <SidebarGroup title="Recents" storage-key="recents">
         <ConversationList
           v-model:active-id="activeId"
           :conversations="conversations.conversations"
           :loading="conversations.loading"
           :error="conversations.error"
         />
-      </div>
-      <div v-else class="flex-1" />
+      </SidebarGroup>
+    </template>
 
-      <div class="p-2">
-        <Button
-          text
-          fluid
-          aria-label="Account"
-          aria-haspopup="true"
-          aria-controls="account_menu"
-          @click="toggleAccount"
+    <template #account="{ collapsed }">
+      <!-- Tertiary: no fill at rest, Line at 40% on hover, no border. A plain
+           button rather than a PrimeVue one, whose own font-size and hover
+           would otherwise set it apart from every other tertiary. -->
+      <button
+        type="button"
+        class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-body-sm text-ink transition-colors hover:bg-line/40 active:bg-line/60 motion-reduce:transition-none"
+        :class="collapsed ? 'justify-center' : ''"
+        aria-label="Account"
+        aria-haspopup="true"
+        aria-controls="account_menu"
+        @click="toggleAccount"
+      >
+        <Avatar :label="initial" shape="circle" class="size-6 shrink-0 text-caption" />
+        <span v-if="!collapsed" class="min-w-0 flex-1 truncate max-sm:hidden">
+          {{ session.user?.email }}
+        </span>
+      </button>
+      <Menu id="account_menu" ref="accountMenu" :model="accountItems" :popup="true" />
+    </template>
+
+    <template v-if="conversationId">
+      <div ref="scrollArea" class="min-h-0 flex-1 overflow-y-auto px-6 py-8">
+        <MessageList :messages="messages" :working="working" />
+        <p
+          v-if="errorMessage"
+          role="alert"
+          class="mx-auto mt-4 max-w-3xl text-body-sm text-subtext"
         >
-          <span class="flex w-full items-center gap-2.5" :class="collapsed ? 'justify-center' : ''">
-            <Avatar :label="initial" shape="circle" />
-            <span
-              v-if="!collapsed"
-              class="min-w-0 flex-1 truncate text-left text-body-sm text-subtext max-sm:hidden"
-            >
-              {{ session.user?.email }}
-            </span>
-          </span>
-        </Button>
-        <Menu id="account_menu" ref="accountMenu" :model="accountItems" :popup="true" />
+          {{ errorMessage }}
+        </p>
       </div>
-    </aside>
-
-    <main class="flex min-w-0 flex-1 flex-col bg-paper-white">
-      <template v-if="conversationId">
-        <div ref="scrollArea" class="min-h-0 flex-1 overflow-y-auto px-6 py-8">
-          <MessageList :messages="messages" :working="working" />
-          <p
-            v-if="errorMessage"
-            role="alert"
-            class="mx-auto mt-4 max-w-2xl text-body-sm text-subtext"
-          >
-            {{ errorMessage }}
-          </p>
-        </div>
-        <div class="px-6 pb-6">
+      <div class="px-6 pb-6">
+        <div class="mx-auto w-full max-w-3xl">
           <MessageComposer
             ref="composer"
             v-model="draft"
@@ -297,29 +245,33 @@ async function signOut(): Promise<void> {
             @stop="stop"
           />
         </div>
-      </template>
+      </div>
+    </template>
 
-      <template v-else>
-        <div class="flex flex-1 items-center justify-center px-6">
-          <div class="w-full">
-            <h1 class="mx-auto max-w-4xl text-center text-heading-lg font-semibold sm:text-display">
-              Ask anything about your documents.
-            </h1>
-            <div class="mt-8">
-              <MessageComposer
-                ref="composer"
-                v-model="draft"
-                :disabled="!canSend"
-                :busy="busy"
-                @submit="submit"
-                @stop="stop"
-              />
+    <template v-else>
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        <!-- Centered horizontally, but anchored near the top rather than
+             vertically centered: the composer sits in the upper-middle of the
+             page, as on v0 and MiniMax. -->
+        <div class="flex min-h-full flex-col items-center px-6 pt-[17vh] pb-16">
+          <h1 class="text-center text-heading-lg font-medium">What can I help you with?</h1>
+          <div class="mt-8 w-full max-w-3xl">
+            <MessageComposer
+              ref="composer"
+              v-model="draft"
+              :disabled="!canSend"
+              :busy="busy"
+              @submit="submit"
+              @stop="stop"
+            />
+            <div class="mt-4">
+              <SuggestionChips @select="selectSuggestion" />
             </div>
           </div>
         </div>
-      </template>
-    </main>
+      </div>
+    </template>
+  </RootLayout>
 
-    <SettingsDialog v-model="settingsOpen" />
-  </div>
+  <SettingsDialog v-model="settingsOpen" />
 </template>

@@ -173,5 +173,29 @@ export const AiChatPreset = definePreset(Aura, {
         color: '#171717',
       },
     },
+    // Icon-only controls need a label on hover; the tooltip takes the same 8px
+    // radius as every other control, over an Ink fill. Colours live under
+    // colorScheme.light.root — that is where Aura keeps them.
+    //
+    // `gutter: 0` removes the tail: the arrow is a CSS-bordered triangle sized
+    // by the gutter, so a zero gutter collapses it and drops the offset. The
+    // theme styles no font-size, so the size comes from a `text-caption` class
+    // on each usage.
+    tooltip: {
+      root: {
+        gutter: '0px',
+        borderRadius: '8px',
+        padding: '5px 10px',
+        maxWidth: '14rem',
+      },
+      colorScheme: {
+        light: {
+          root: {
+            background: 'var(--color-ink)',
+            color: 'var(--color-paper-white)',
+          },
+        },
+      },
+    },
   },
 })

@@ -11,7 +11,7 @@ export class SignInPage {
     this.heading = page.getByRole("heading", { name: "Sign In" });
     this.email = page.getByLabel("Email", { exact: true });
     this.password = page.getByLabel("Password", { exact: true });
-    this.submit = page.getByRole("button", { name: "Sign in" });
+    this.submit = page.getByRole("button", { name: "Continue", exact: true });
     this.alert = page.getByRole("alert");
   }
 

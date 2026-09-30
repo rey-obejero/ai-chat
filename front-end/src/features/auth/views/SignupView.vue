@@ -4,12 +4,13 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import { ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 
 import IconEye from '~icons/lucide/eye'
 import IconEyeClosed from '~icons/lucide/eye-closed'
 import IconLoaderCircle from '~icons/lucide/loader-circle'
 
+import AppLink from '@/components/AppLink.vue'
 import AuthField from '../components/AuthField.vue'
 import AuthScreen from '../components/AuthScreen.vue'
 import SocialButtons from '../components/SocialButtons.vue'
@@ -124,12 +125,7 @@ async function submit(): Promise<void> {
 
       <p class="text-center text-sm text-subtext">
         Already have an account?
-        <RouterLink
-          to="/sign-in"
-          class="rounded-sm font-medium text-tertiary hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
-        >
-          Sign in
-        </RouterLink>
+        <AppLink to="/sign-in" inline>Sign in</AppLink>
       </p>
     </form>
   </AuthScreen>

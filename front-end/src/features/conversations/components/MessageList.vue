@@ -7,12 +7,31 @@ defineProps<{ messages: UIMessage[]; working: boolean }>()
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-2xl flex-col gap-6">
-    <div v-for="message in messages" :key="message.id" class="flex flex-col gap-1.5">
-      <span class="text-caption uppercase tracking-wide text-subtext">
+  <div
+    role="log"
+    aria-label="Conversation"
+    aria-live="polite"
+    class="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end gap-6"
+  >
+    <div
+      v-for="message in messages"
+      :key="message.id"
+      class="flex flex-col gap-1.5"
+      :class="message.role === 'user' ? 'items-end' : 'items-start'"
+    >
+      <span
+        class="text-caption uppercase tracking-wide text-subtext"
+        :class="message.role === 'user' ? 'text-right' : ''"
+      >
         {{ message.role === 'user' ? 'You' : 'Assistant' }}
       </span>
-      <p class="whitespace-pre-wrap text-body leading-relaxed text-ink">
+      <p
+        v-if="message.role === 'user'"
+        class="max-w-[85%] rounded-xl bg-line/60 px-4 py-2.5 text-body leading-relaxed whitespace-pre-wrap text-ink"
+      >
+        {{ messageText(message) }}
+      </p>
+      <p v-else class="w-full leading-relaxed whitespace-pre-wrap text-body text-ink">
         {{ messageText(message) }}
       </p>
     </div>

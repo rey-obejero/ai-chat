@@ -38,6 +38,24 @@ Per-user token spend is a Postgres ledger summed over a calendar period, with a
 route dependency that blocks a user who has exhausted their budget and a
 settings modal that reports the remaining allowance (ADR-0024).
 
+## Known front-end defects
+
+Recorded rather than fixed; each is visible on inspection and can be picked up
+when it next draws attention.
+
+- **Group-header chevrons never appear.** `SidebarGroup.vue` reveals the chevron
+  with `group-hover:opacity-100`, and that variant is inert in this build — the
+  button is genuinely `:hover` while the chevron stays at `opacity: 0`. Any
+  reliance on a `group-*` variant should be treated as broken until verified in
+  a browser. The fix is a scoped `:hover` / `:focus-within` rule, which is what
+  the collapsed-sidebar logo toggle now uses.
+- **PrimeVue's unlayered stylesheet outranks Tailwind utilities.** Unlayered CSS
+  beats `@layer utilities` regardless of specificity, so a utility on a PrimeVue
+  component needs `!` to land. This is why the icon buttons carry
+  `!size-8 !p-0`, the collapsed toggle needs `!absolute`, and the model selector
+  needs `!text-body-sm` — without it, PrimeVue's 16px button font-size wins and
+  the control renders larger than its peers.
+
 ## Next: a public deploy
 
 The capped OpenRouter key, a single-VPS Compose stack behind Caddy with

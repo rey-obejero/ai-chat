@@ -2,7 +2,9 @@
 import ProgressSpinner from 'primevue/progressspinner'
 import ThirdParty from 'supertokens-web-js/recipe/thirdparty'
 import { onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
+
+import AppLink from '@/components/AppLink.vue'
 
 import AuthScreen from '../components/AuthScreen.vue'
 import { useSessionStore } from '../stores/session'
@@ -39,13 +41,7 @@ onMounted(async () => {
         />
         <p class="text-sm">{{ error || 'Completing sign-in…' }}</p>
       </div>
-      <RouterLink
-        v-if="error"
-        to="/sign-in"
-        class="rounded-sm text-sm font-medium text-tertiary hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
-      >
-        Back to sign in
-      </RouterLink>
+      <AppLink v-if="error" to="/sign-in" inline>Back to sign in</AppLink>
     </div>
   </AuthScreen>
 </template>

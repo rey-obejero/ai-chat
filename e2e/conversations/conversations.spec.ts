@@ -18,12 +18,14 @@ test("sends a message and renders the streamed reply", async ({ signUpPage, page
   await page.getByLabel("Message").fill("Hello from e2e");
   await page.getByRole("button", { name: "Send" }).click();
 
-  const main = page.getByRole("main");
-  await expect(main.getByText("Hello from e2e", { exact: true })).toBeVisible();
-  await expect(main.getByText("Mock reply: Hello from e2e", { exact: true })).toBeVisible();
+  // The header shows the conversation title, which is the first user message, so
+  // assertions are scoped to the transcript rather than to the whole page.
+  const transcript = page.getByRole("log");
+  await expect(transcript.getByText("Hello from e2e", { exact: true })).toBeVisible();
+  await expect(transcript.getByText("Mock reply: Hello from e2e", { exact: true })).toBeVisible();
 
   // The server names the conversation after its first user message.
-  await expect(page.getByRole("option", { name: "Hello from e2e" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hello from e2e" })).toBeVisible();
 });
 
 test("persists the conversation across a reload", async ({ signUpPage, page }) => {
@@ -33,13 +35,13 @@ test("persists the conversation across a reload", async ({ signUpPage, page }) =
   await page.getByLabel("Message").fill("Persisted turn");
   await page.getByRole("button", { name: "Send" }).click();
 
-  const main = page.getByRole("main");
-  await expect(main.getByText("Mock reply: Persisted turn", { exact: true })).toBeVisible();
+  const transcript = page.getByRole("log");
+  await expect(transcript.getByText("Mock reply: Persisted turn", { exact: true })).toBeVisible();
 
   await page.reload();
 
-  await expect(main.getByText("Persisted turn", { exact: true })).toBeVisible();
-  await expect(main.getByText("Mock reply: Persisted turn", { exact: true })).toBeVisible();
+  await expect(transcript.getByText("Persisted turn", { exact: true })).toBeVisible();
+  await expect(transcript.getByText("Mock reply: Persisted turn", { exact: true })).toBeVisible();
 });
 
 test("creates the conversation from the first message on the empty state", async ({
@@ -53,5 +55,7 @@ test("creates the conversation from the first message on the empty state", async
   await page.getByRole("button", { name: "Send" }).click();
 
   await expect(page).toHaveURL(/\/conversations\/[\w-]+$/);
-  await expect(page.getByText("Mock reply: Straight to it", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("log").getByText("Mock reply: Straight to it", { exact: true }),
+  ).toBeVisible();
 });
