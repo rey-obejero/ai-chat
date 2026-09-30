@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import Listbox from 'primevue/listbox'
-
 import type { Conversation } from '../stores/conversations'
 
 const activeId = defineModel<string | null>('activeId')
@@ -14,20 +12,26 @@ defineProps<{
 
 <template>
   <div>
-    <p class="px-3 pb-1 pt-2 text-caption text-subtext">Conversations</p>
-
-    <p v-if="loading" class="px-3 py-2 text-body-sm text-subtext" role="status">Loading…</p>
-    <p v-else-if="error" class="px-3 py-2 text-body-sm text-subtext" role="alert">{{ error }}</p>
-    <p v-else-if="conversations.length === 0" class="px-3 py-2 text-body-sm text-subtext">
-      No conversations yet. Start one above.
+    <p v-if="loading" class="px-2.5 py-2 text-caption text-subtext" role="status">Loading…</p>
+    <p v-else-if="error" class="px-2.5 py-2 text-caption text-subtext" role="alert">
+      {{ error }}
     </p>
-    <Listbox
-      v-else
-      v-model="activeId"
-      :options="conversations"
-      option-label="title"
-      option-value="id"
-      class="w-full"
-    />
+    <ul v-else class="space-y-0.5">
+      <li v-for="conversation in conversations" :key="conversation.id">
+        <button
+          type="button"
+          class="w-full cursor-pointer truncate rounded-lg px-2.5 py-2 text-left text-body-sm transition-colors motion-reduce:transition-none"
+          :class="
+            conversation.id === activeId
+              ? 'bg-line/60 font-medium text-ink'
+              : 'text-ink hover:bg-line/40'
+          "
+          :aria-current="conversation.id === activeId ? 'true' : undefined"
+          @click="activeId = conversation.id"
+        >
+          {{ conversation.title }}
+        </button>
+      </li>
+    </ul>
   </div>
 </template>

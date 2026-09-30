@@ -11,7 +11,7 @@ export class SignUpPage {
     this.heading = page.getByRole("heading", { name: "Sign Up" });
     this.email = page.getByLabel("Email", { exact: true });
     this.password = page.getByLabel("Password", { exact: true });
-    this.submit = page.getByRole("button", { name: "Create account" });
+    this.submit = page.getByRole("button", { name: "Continue", exact: true });
     this.alert = page.getByRole("alert");
   }
 
