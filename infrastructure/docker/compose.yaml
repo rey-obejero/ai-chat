@@ -1,14 +1,25 @@
 name: ai-chat
 
+# The whole stack runs here (ADR-0026). Caddy is the only service that
+# publishes a host port; everything else is reachable on the internal network
+# only. Do not add a `ports:` entry to another service: uvicorn trusts
+# X-Forwarded-For from any peer, so publishing the API would let a client
+# spoof its address and evade the rate limiter (ADR-0020).
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-aichat}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aichat}
       POSTGRES_DB: ${POSTGRES_DB:-aichat}
-    ports:
-      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -17,31 +28,159 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *logging
 
   supertokens:
     # Keep in sync with supertokens-python: SDK 0.31.x requires CDI 5.4,
     # which core advertises from 11.4.4 onward.
     image: registry.supertokens.io/supertokens/supertokens-postgresql:11.4.4
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       POSTGRESQL_CONNECTION_URI: postgresql://${POSTGRES_USER:-aichat}:${POSTGRES_PASSWORD:-aichat}@postgres:5432/supertokens
       SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:-dev-key-change-me}
-    ports:
-      - "${SUPERTOKENS_PORT:-3567}:3567"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3567/hello"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logging
 
   redis:
     # Rate-limit counters only; nothing here needs to survive a restart, so
     # there is no volume (ADR-0020).
-    image: redis:7-alpine
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *logging
+
+  migrate:
+    # One-shot: without this the API starts cleanly and then 500s on missing
+    # tables, which is a confusing failure. `api` waits for it to succeed.
+    build:
+      context: ../../back-end
+    command: ["alembic", "upgrade", "head"]
+    profiles: ["full"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: &api-env
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aichat}:${POSTGRES_PASSWORD:-aichat}@postgres:5432/aichat
+      SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
+      SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:-dev-key-change-me}
+      # Both must be loopback (browser-side origin), not the internal service
+      # name — SuperTokens derives cookie scope and redirects from these.
+      API_BASE_URL: http://localhost
+      FRONTEND_URL: http://localhost
+      RATE_LIMIT_STORAGE_URI: async+redis://redis:6379/0
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+    logging: *logging
+
+  api:
+    build:
+      context: ../../back-end
+    restart: unless-stopped
+    profiles: ["full"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      supertokens:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment: *api-env
+    volumes:
+      # Source only, so editing a Python file reloads the API. The virtualenv
+      # stays in the image.
+      - ../../back-end/src:/app/src:ro
+      - ../../back-end/alembic:/app/alembic:ro
+    command:
+      - uvicorn
+      - ai_chat.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+      - --reload-dir
+      - /app/src
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - "*"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    logging: *logging
+
+  front-end:
+    image: node:22-alpine
+    working_dir: /app/front-end
+    restart: unless-stopped
+    profiles: ["full"]
+    # Install from the workspace root, not from front-end/: the
+    # onlyBuiltDependencies allowlist that permits esbuild's postinstall lives
+    # in the root package.json, and pnpm only reads it there.
+    command:
+      - sh
+      - -c
+      - >-
+        corepack enable &&
+        pnpm install --frozen-lockfile &&
+        pnpm dev --host 0.0.0.0 --port 5173
+    volumes:
+      - ../../:/app
+      # Keep the host's node_modules out of the container's view, so the host
+      # and container installs do not fight over one directory.
+      - front-end-modules:/app/node_modules
+      - e2e-modules:/app/e2e/node_modules
+    environment:
+      # CI=true keeps pnpm non-interactive: the container's node_modules is a
+      # fresh volume, so pnpm would otherwise stop on a "reinstall from
+      # scratch?" prompt and never reach `pnpm dev`.
+      CI: "true"
+      # HMR needs no configuration: with no `hmr.host` or `clientPort`, Vite
+      # derives the socket origin from the client script's own URL, which is
+      # the page origin. Caddy forwards the upgrade to this service.
+      CHOKIDAR_USEPOLLING: "false"
+    depends_on:
+      - api
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ["full"]
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    environment:
+      SPA_UPSTREAM: front-end:5173
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging: *logging
 
 volumes:
   pgdata:
+  front-end-modules:
+  e2e-modules:
+  caddy-data:
+  caddy-config:
