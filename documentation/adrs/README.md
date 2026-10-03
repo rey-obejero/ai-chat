@@ -84,3 +84,4 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0028](0028-no-social-account-linking.md) | Social sign-in never merges into an existing account | Accepted | 2026-10-03 |
 | [0029](0029-gated-test-identity-provider.md) | The application carries a gated stand-in identity provider for tests | Accepted | 2026-10-04 |
 | [0030](0030-transactional-mail-over-smtp.md) | Transactional mail goes out over SMTP, caught by Mailpit in development | Accepted | 2026-10-04 |
+| [0031](0031-password-reset-security-posture.md) | Password reset never reveals whether an account exists | Accepted | 2026-10-04 |

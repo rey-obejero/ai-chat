@@ -18,7 +18,10 @@ http://localhost {
     # risk pinning a local host to HTTPS. It belongs in the production block.
     header {
         X-Content-Type-Options "nosniff"
-        Referrer-Policy        "strict-origin-when-cross-origin"
+        # The reset link carries a single-use token in its query string. Any
+        # third-party resource on the page would receive it as a Referer under
+        # a weaker policy, so send none at all (ADR-0031).
+        Referrer-Policy        "no-referrer"
     }
 
     handle /api/* {
@@ -39,6 +42,14 @@ http://localhost {
 
     log {
         output stdout
-        format json
+        # The reset link arrives as a URL query, so the default JSON access log
+        # would write the token to disk. Redact it; keep the key so a token's
+        # presence is still visible without its value (ADR-0031).
+        format filter {
+            wrap json
+            request>uri query {
+                replace token REDACTED
+            }
+        }
     }
 }
