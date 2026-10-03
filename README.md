@@ -2,6 +2,19 @@
 
 ![Conversations View](./documentation/assets/screenshot.png)
 
+A ChatGPT-style assistant with document retrieval, tool calling, and custom
+skills.
+
+## Contents
+
+- [Technologies](#technologies)
+- [System Topology](#system-topology)
+  - [Development](#development)
+- [Getting Started](#getting-started)
+  - [OAuth redirect URIs](#oauth-redirect-uris)
+- [Features](#features)
+  - [Authentication](#authentication)
+
 ## Technologies
 
 | Area               | Technology                 |
@@ -15,27 +28,56 @@
 | Containerization   | Docker Compose, Docker     |
 | Reverse Proxy      | Caddy                      |
 
-## Topology
+## System Topology
+
+The application is a single origin: the browser only ever talks to Caddy, which
+routes `/api/*` to the API and everything else to the front end. Only Caddy
+publishes a host port; every other service is reachable on the internal network
+alone.
+
+### Development
+
+`just development` runs this from `infrastructure/docker/compose.yaml`, with the
+SPA served by the Vite dev server so edits appear without a rebuild.
 
 ```mermaid
 flowchart TB
   browser(["Browser"])
-  caddy["Caddy"]
-  vue["Vue"]
-  fastapi["FastAPI"]
-  supertokens["SuperTokens"]
-  postgres[("PostgreSQL")]
-  redis["Redis"]
-  llm["LLM Provider"]
+  caddy["Caddy<br/>:80, the only published port"]
+  vite["Vite dev server<br/>:5173"]
+  fastapi["FastAPI<br/>:8000"]
+  supertokens["SuperTokens core<br/>:3567"]
+  postgres[("PostgreSQL<br/>:5432")]
+  redis[("Redis<br/>:6379")]
+  llm["Model provider<br/>openrouter.ai, outbound only"]
 
-  browser --> caddy
-  caddy --> vue
-  caddy --> fastapi
-  fastapi --> supertokens
-  fastapi --> postgres
-  fastapi --> redis
-  fastapi --> llm
+  browser -->|"every request"| caddy
+  caddy -->|"/api/*"| fastapi
+  caddy -->|"everything else,<br/>including the hot-reload socket"| vite
+  fastapi -->|"sessions and users"| supertokens
+  fastapi -->|"conversations, messages, users"| postgres
+  fastapi -->|"rate-limit counters"| redis
+  fastapi -->|"chat completions"| llm
 ```
+
+Postgres and Redis are drawn with their default in-container ports. Redis holds
+rate-limit counters only and has no volume, so nothing there survives a restart.
+
+**Loading a page.** The browser asks Caddy for a URL. Caddy sends anything under
+`/api/` to the API and everything else to the dev server, which returns the SPA
+shell and its modules. The SPA then calls `/api/...` on its own origin, so there
+is no cross-origin request and no CORS configuration to keep in step.
+
+**Sending a message.** The SPA posts to `/api/v1/conversations/...` through
+Caddy. The API checks the session with SuperTokens, records the message in
+Postgres, and streams the reply from the model provider back through Caddy to
+the browser. The reply is streamed rather than buffered, which is why Caddy
+leaves proxied responses alone for that route.
+
+Running the API and the SPA on the host instead (`just back-end` /
+`just front-end`) drops Caddy from the path: Vite serves the SPA on `:5173` and
+proxies `/api` to the API on `:8000` itself. The end-to-end suite uses that
+arrangement so it can supply its own model provider (ADR-0023).
 
 ## Getting Started
 
@@ -57,10 +99,10 @@ There is nothing to configure for local use and no certificate to trust: the
 development origin is plain HTTP (ADR-0025). The two template files are only
 needed to change a default:
 
-| Copy | To | For |
-|---|---|---|
-| `back-end/.env.example` | `back-end/.env` | the API's own settings — an LLM key for real replies, or OAuth credentials for social sign-in |
-| `infrastructure/docker/.env.example` | `infrastructure/docker/.env` | the Docker setup — database password, published ports |
+| Copy                                 | To                           | For                                                                                           |
+| ------------------------------------ | ---------------------------- | --------------------------------------------------------------------------------------------- |
+| `back-end/.env.example`              | `back-end/.env`              | the API's own settings — an LLM key for real replies, or OAuth credentials for social sign-in |
+| `infrastructure/docker/.env.example` | `infrastructure/docker/.env` | the Docker setup — database password, published ports                                         |
 
 The development stack loads `back-end/.env` too, so a credential added there is
 picked up whether the API runs in the container or on the host. The Docker one
