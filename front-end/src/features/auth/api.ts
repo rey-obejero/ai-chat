@@ -10,17 +10,23 @@ export function getMe(): Promise<User> {
   return apiFetch<User>('/me')
 }
 
-export interface SocialProviders {
-  providers: string[]
+export interface SocialProvider {
+  id: string
+  name: string
+}
+
+interface SocialProviders {
+  providers: SocialProvider[]
 }
 
 /**
  * Which social providers this deployment has credentials for.
  *
- * Read before sign-in, so the endpoint is public. It returns identifiers only,
- * never credential state.
+ * Read before sign-in, so the endpoint is public. It returns identifiers and
+ * display names only, never credential state. The name comes from the backend
+ * so a label is not defined in two places.
  */
-export async function listSocialProviders(): Promise<SocialProviders['providers']> {
+export async function listSocialProviders(): Promise<SocialProvider[]> {
   const response = await apiFetch<SocialProviders>('/auth/providers')
   return response.providers
 }

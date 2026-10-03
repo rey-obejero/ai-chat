@@ -19,8 +19,8 @@ function mountButtons() {
 
 describe('SocialButtons', () => {
   it('renders nothing at all when no providers are configured', async () => {
-    // Including the wrapper: a divider with nothing above it is the tell of a
-    // hardcoded list.
+    // Including the divider: it moved into this component precisely so one
+    // condition could hide both.
     mocked.mockResolvedValue([])
     const wrapper = mountButtons()
     await flushPromises()
@@ -29,23 +29,44 @@ describe('SocialButtons', () => {
     expect(wrapper.text()).toBe('')
   })
 
-  it('renders only the configured providers', async () => {
-    mocked.mockResolvedValue(['github'])
+  it('renders the name the backend supplies', async () => {
+    mocked.mockResolvedValue([{ id: 'github', name: 'GitHub' }])
     const wrapper = mountButtons()
     await flushPromises()
 
     const labels = wrapper.findAll('button').map((b) => b.text())
     expect(labels).toHaveLength(1)
-    expect(labels[0]).toContain('GitHub')
+    expect(labels[0]).toContain('Continue with GitHub')
   })
 
-  it('ignores a provider it has no button for', async () => {
-    mocked.mockResolvedValue(['google', 'some-future-provider'])
+  it('renders a provider it has no brand artwork for', async () => {
+    // The bug this guards: an unrecognised provider used to be dropped from the
+    // list, so a deployment that configured one showed no social option at all
+    // and gave the user no hint that anything was meant to be there.
+    mocked.mockResolvedValue([{ id: 'okta', name: 'Okta' }])
     const wrapper = mountButtons()
     await flushPromises()
 
-    expect(wrapper.findAll('button')).toHaveLength(1)
-    expect(wrapper.text()).toContain('Google')
+    const buttons = wrapper.findAll('button')
+    expect(buttons).toHaveLength(1)
+    expect(buttons[0]!.text()).toContain('Continue with Okta')
+  })
+
+  it('shows no icon for a provider it has no mark for', async () => {
+    // A stand-in icon would be inventing branding we do not have.
+    mocked.mockResolvedValue([{ id: 'okta', name: 'Okta' }])
+    const wrapper = mountButtons()
+    await flushPromises()
+
+    expect(wrapper.find('svg').exists()).toBe(false)
+  })
+
+  it('still shows its icon for a provider it knows', async () => {
+    mocked.mockResolvedValue([{ id: 'github', name: 'GitHub' }])
+    const wrapper = mountButtons()
+    await flushPromises()
+
+    expect(wrapper.find('svg').exists()).toBe(true)
   })
 
   it('reports a failed lookup instead of rendering dead buttons', async () => {

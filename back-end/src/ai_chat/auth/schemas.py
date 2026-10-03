@@ -11,12 +11,19 @@ class UserRead(BaseModel):
     created_at: datetime
 
 
+class SocialProviderRead(BaseModel):
+    """One configured social provider, as the sign-in screen needs it."""
+
+    id: str
+    name: str
+
+
 class SocialProvidersRead(BaseModel):
     """Which social buttons to render.
 
-    Identifiers only — never credential state. The front end needs this before
-    sign-in, so the endpoint is public, and it must not disclose more than which
-    buttons appear.
+    Identifiers and display names only — never credential state. The front end
+    needs this before sign-in, so the endpoint is public, and it must not
+    disclose more than which buttons appear.
     """
 
-    providers: list[str]
+    providers: list[SocialProviderRead]

@@ -30,15 +30,16 @@ _PLACEHOLDER_EMAIL_DOMAIN = "unknown.local"
 def _providers(settings: Settings) -> list[ProviderInput]:
     providers: list[ProviderInput] = []
     candidates = [
-        ("google", settings.google_client_id, settings.google_client_secret),
-        ("github", settings.github_client_id, settings.github_client_secret),
+        ("google", "Google", settings.google_client_id, settings.google_client_secret),
+        ("github", "GitHub", settings.github_client_id, settings.github_client_secret),
     ]
-    for third_party_id, client_id, client_secret in candidates:
+    for third_party_id, name, client_id, client_secret in candidates:
         if client_id and client_secret:
             providers.append(
                 ProviderInput(
                     config=ProviderConfig(
                         third_party_id=third_party_id,
+                        name=name,
                         clients=[
                             ProviderClientConfig(
                                 client_id=client_id,
@@ -51,13 +52,19 @@ def _providers(settings: Settings) -> list[ProviderInput]:
     return providers
 
 
-def configured_provider_ids(settings: Settings) -> list[str]:
-    """Third-party ids the core actually has credentials for.
+def configured_providers(settings: Settings) -> list[tuple[str, str]]:
+    """The (id, display name) pairs the core actually has credentials for.
 
     Derived from `_providers` rather than re-checking the credentials, so the
     UI and the core cannot disagree about which buttons exist.
+
+    The name travels with the id so the front end does not keep its own copy of
+    a label the backend already knows — the two would drift.
     """
-    return [provider.config.third_party_id for provider in _providers(settings)]
+    return [
+        (provider.config.third_party_id, provider.config.name or provider.config.third_party_id)
+        for provider in _providers(settings)
+    ]
 
 
 async def _on_unauthorised(

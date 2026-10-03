@@ -63,7 +63,7 @@ describe('SignInView', () => {
   })
 
   it('renders the divider once there is a provider to separate', async () => {
-    mocked.mockResolvedValue(['google'])
+    mocked.mockResolvedValue([{ id: 'google', name: 'Google' }])
     const wrapper = await mountSignIn()
 
     expect(wrapper.findAll('p').filter((p) => p.text() === 'or')).toHaveLength(1)
