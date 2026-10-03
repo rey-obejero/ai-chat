@@ -4,13 +4,14 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import IconEye from '~icons/lucide/eye'
 import IconEyeClosed from '~icons/lucide/eye-closed'
 import IconLoaderCircle from '~icons/lucide/loader-circle'
 
 import AppLink from '@/components/AppLink.vue'
+import { safeRedirect } from '@/lib/redirect'
 import AuthField from '../components/AuthField.vue'
 import AuthScreen from '../components/AuthScreen.vue'
 import SocialButtons from '../components/SocialButtons.vue'
@@ -21,6 +22,7 @@ const password = ref('')
 const error = ref('')
 const loading = ref(false)
 
+const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 
@@ -37,7 +39,9 @@ async function submit(): Promise<void> {
 
     if (response.status === 'OK') {
       await session.refresh()
-      await router.replace('/conversations')
+      // Honour the same redirect intent as sign-in, so a user who
+      // deep-linked and then registered still lands where they meant to.
+      await router.push(safeRedirect(route.query.redirectTo, { name: 'conversations' }))
     } else if (response.status === 'FIELD_ERROR') {
       error.value = response.formFields[0]?.error ?? 'Could not create your account.'
     } else {
@@ -125,7 +129,7 @@ async function submit(): Promise<void> {
 
       <p class="text-center text-sm text-subtext">
         Already have an account?
-        <AppLink to="/sign-in" inline>Sign in</AppLink>
+        <AppLink :to="{ name: 'sign-in' }" inline>Sign in</AppLink>
       </p>
     </form>
   </AuthScreen>

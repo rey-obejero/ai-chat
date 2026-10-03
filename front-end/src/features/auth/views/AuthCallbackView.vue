@@ -18,7 +18,7 @@ onMounted(async () => {
     const response = await ThirdParty.signInAndUp()
     if (response.status === 'OK') {
       await session.refresh()
-      await router.replace('/conversations')
+      await router.replace({ name: 'conversations' })
     } else {
       error.value = 'Your provider did not share an email address.'
     }
@@ -41,7 +41,7 @@ onMounted(async () => {
         />
         <p class="text-sm">{{ error || 'Completing sign-in…' }}</p>
       </div>
-      <AppLink v-if="error" to="/sign-in" inline>Back to sign in</AppLink>
+      <AppLink v-if="error" :to="{ name: 'sign-in' }" inline>Back to sign in</AppLink>
     </div>
   </AuthScreen>
 </template>

@@ -77,7 +77,7 @@ def init_supertokens(settings: Settings) -> None:
             api_domain=settings.api_base_url,
             website_domain=settings.frontend_url,
             api_base_path="/api/auth",
-            website_base_path="/auth",
+            website_base_path="/authentication",
         ),
         supertokens_config=SupertokensConfig(
             connection_uri=settings.supertokens_connection_uri,

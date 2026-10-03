@@ -182,7 +182,7 @@ function stop(): void {
 
 async function signOut(): Promise<void> {
   await session.signOut()
-  await router.replace('/sign-in')
+  await router.replace({ name: 'sign-in' })
 }
 </script>
 

@@ -7,7 +7,7 @@ test("signs up a new account and lands in conversations", async ({ signUpPage, p
   await signUpPage.goto();
   await signUpPage.signUp(uniqueEmail(), VALID_PASSWORD);
 
-  await expect(page).toHaveURL(/\/conversations$/);
+  await expect(page).toHaveURL(/\/application\/conversations$/);
   await expect(page.getByRole("button", { name: "New conversation" })).toBeVisible();
 });
 
@@ -16,5 +16,5 @@ test("shows an error when the email already exists", async ({ signUpPage, user, 
   await signUpPage.signUp(user.email, VALID_PASSWORD);
 
   await expect(signUpPage.alert).toBeVisible();
-  await expect(page).toHaveURL(/\/sign-up$/);
+  await expect(page).toHaveURL(/\/authentication\/sign-up$/);
 });

@@ -4,13 +4,14 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import IconEye from '~icons/lucide/eye'
 import IconEyeClosed from '~icons/lucide/eye-closed'
 import IconLoaderCircle from '~icons/lucide/loader-circle'
 
 import AppLink from '@/components/AppLink.vue'
+import { safeRedirect } from '@/lib/redirect'
 import AuthField from '../components/AuthField.vue'
 import AuthScreen from '../components/AuthScreen.vue'
 import SocialButtons from '../components/SocialButtons.vue'
@@ -25,8 +26,10 @@ const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 
-function redirectTarget(): string {
-  return typeof route.query.redirect === 'string' ? route.query.redirect : '/conversations'
+// `redirectTo` comes from the query string, so it is validated rather than
+// trusted: a protocol-relative value would send the user off-origin.
+function redirectTarget(): RouteLocationRaw {
+  return safeRedirect(route.query.redirectTo, { name: 'conversations' })
 }
 
 async function submit(): Promise<void> {
@@ -42,7 +45,9 @@ async function submit(): Promise<void> {
 
     if (response.status === 'OK') {
       await session.refresh()
-      await router.replace(redirectTarget())
+      // `push`, not `replace`: keeping sign-in in history makes the back
+      // button after signing in behave predictably.
+      await router.push(redirectTarget())
     } else if (response.status === 'FIELD_ERROR') {
       error.value = response.formFields[0]?.error ?? 'Check your email and password.'
     } else {
@@ -133,7 +138,7 @@ async function submit(): Promise<void> {
 
       <p class="text-center text-sm text-subtext">
         Don't have an account?
-        <AppLink to="/sign-up" inline>Sign up</AppLink>
+        <AppLink :to="{ name: 'sign-up' }" inline>Sign up</AppLink>
       </p>
     </form>
   </AuthScreen>

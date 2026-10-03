@@ -16,7 +16,7 @@ export class SignUpPage {
   }
 
   async goto(): Promise<void> {
-    await this.page.goto("/sign-up");
+    await this.page.goto("/authentication/sign-up");
   }
 
   async signUp(email: string, password: string): Promise<void> {

@@ -16,7 +16,10 @@ async function signInWith(thirdPartyId: 'google' | 'github'): Promise<void> {
   try {
     const url = await ThirdParty.getAuthorisationURLWithQueryParamsAndSetState({
       thirdPartyId,
-      frontendRedirectURI: `${window.location.origin}/auth/callback`,
+      // This is the SPA route SuperTokens forwards to afterwards. The
+      // provider console registers `/api/auth/callback/{provider}` instead —
+      // SuperTokens' own backend handles that hop.
+      frontendRedirectURI: `${window.location.origin}/authentication/callback`,
     })
     window.location.assign(url)
   } catch {

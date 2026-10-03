@@ -146,9 +146,10 @@ services:
         pnpm dev --host 0.0.0.0 --port 5173
     volumes:
       - ../../:/app
-      # Keep the host's node_modules out of the container's view, so the host
-      # and container installs do not fight over one directory.
-      - front-end-modules:/app/node_modules
+      # Every node_modules the install touches must be a volume, or the
+      # container leaves root-owned files in the host's working tree.
+      - workspace-modules:/app/node_modules
+      - front-end-modules:/app/front-end/node_modules
       - e2e-modules:/app/e2e/node_modules
     environment:
       # CI=true keeps pnpm non-interactive: the container's node_modules is a
@@ -182,6 +183,7 @@ services:
 
 volumes:
   pgdata:
+  workspace-modules:
   front-end-modules:
   e2e-modules:
   caddy-data:
