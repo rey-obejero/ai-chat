@@ -1,0 +1,19 @@
+# Secrets must never enter the build context. `.gitignore` does not apply here:
+# Docker reads this file, not git.
+.env
+.env.*
+!.env.example
+
+# Recreated by `uv sync` inside the image. Host-specific and large.
+.venv/
+
+# Build and tooling artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Not needed at runtime
+tests/
