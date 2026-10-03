@@ -51,6 +51,15 @@ def _providers(settings: Settings) -> list[ProviderInput]:
     return providers
 
 
+def configured_provider_ids(settings: Settings) -> list[str]:
+    """Third-party ids the core actually has credentials for.
+
+    Derived from `_providers` rather than re-checking the credentials, so the
+    UI and the core cannot disagree about which buttons exist.
+    """
+    return [provider.config.third_party_id for provider in _providers(settings)]
+
+
 async def _on_unauthorised(
     request: BaseRequest, _message: str, response: BaseResponse
 ) -> BaseResponse:
