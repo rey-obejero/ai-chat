@@ -4,7 +4,11 @@
 - **Date:** 2026-09-22
 - **Deciders:** Rey Obejero
 - **Supersedes:** —
-- **Superseded by:** —
+- **Superseded by:** ADR-0032
+
+> **Superseded by [ADR-0032](0032-rate-limiting-covers-auth.md).** The limiter
+> now runs ahead of the SuperTokens middleware and covers the auth endpoints,
+> with a per-prefix rate. This record is kept for history.
 
 ## TL;DR
 
