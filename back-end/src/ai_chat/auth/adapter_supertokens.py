@@ -23,8 +23,16 @@ from supertokens_python.ingredients.emaildelivery.types import (
 from supertokens_python.logger import log_debug_message
 from supertokens_python.recipe import emailpassword, session, thirdparty
 from supertokens_python.recipe.emailpassword import SMTPService
+from supertokens_python.recipe.emailpassword.interfaces import (
+    RecipeInterface,
+    UpdateEmailOrPasswordOkResult,
+)
 from supertokens_python.recipe.emailpassword.types import EmailTemplateVars
+from supertokens_python.recipe.emailpassword.utils import (
+    EmailPasswordOverrideConfig,
+)
 from supertokens_python.recipe.session import InputErrorHandlers
+from supertokens_python.recipe.session.asyncio import revoke_all_sessions_for_user
 from supertokens_python.recipe.session.framework.fastapi import verify_session
 from supertokens_python.recipe.thirdparty.provider import (
     ProviderClientConfig,
@@ -208,6 +216,45 @@ def _app_info(settings: Settings) -> InputAppInfo:
     )
 
 
+async def revoke_all_sessions(user_id: str) -> None:
+    """End every session for a user. The `UserDirectory` implementation."""
+    await revoke_all_sessions_for_user(user_id)
+
+
+def _revoke_sessions_on_password_change(original: RecipeInterface) -> RecipeInterface:
+    """Revoke every session for a user whenever their password changes.
+
+    The SDK consumes the reset token and updates the password but leaves
+    existing sessions alive, so without this a reset does not evict someone who
+    is already signed in — the exact thing a reset is for. This overrides the
+    one function every password change goes through, and only acts on success.
+    """
+    original_update = original.update_email_or_password
+
+    async def update_email_or_password(
+        recipe_user_id,
+        email,
+        password,
+        apply_password_policy,
+        tenant_id_for_password_policy,
+        user_context,
+    ):
+        result = await original_update(
+            recipe_user_id=recipe_user_id,
+            email=email,
+            password=password,
+            apply_password_policy=apply_password_policy,
+            tenant_id_for_password_policy=tenant_id_for_password_policy,
+            user_context=user_context,
+        )
+        if isinstance(result, UpdateEmailOrPasswordOkResult) and password is not None:
+            await revoke_all_sessions(recipe_user_id.get_as_string())
+        return result
+
+    original.update_email_or_password = update_email_or_password
+    return original
+
+
 def init_supertokens(settings: Settings) -> None:
     init(
         app_info=_app_info(settings),
@@ -218,7 +265,10 @@ def init_supertokens(settings: Settings) -> None:
         framework="fastapi",
         recipe_list=[
             session.init(error_handlers=InputErrorHandlers(on_unauthorised=_on_unauthorised)),
-            emailpassword.init(email_delivery=_email_delivery(settings)),
+            emailpassword.init(
+                email_delivery=_email_delivery(settings),
+                override=EmailPasswordOverrideConfig(functions=_revoke_sessions_on_password_change),
+            ),
             thirdparty.init(
                 sign_in_and_up_feature=thirdparty.SignInAndUpFeature(providers=_providers(settings))
             ),
