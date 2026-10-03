@@ -54,9 +54,17 @@ just development-stop
 ```
 
 There is nothing to configure for local use and no certificate to trust: the
-development origin is plain HTTP (ADR-0025). Copy `back-end/.env.example` to
-`back-end/.env` only if you need to change a default, such as adding an LLM key
-to try a real reply.
+development origin is plain HTTP (ADR-0025). The two template files are only
+needed to change a default:
+
+| Copy | To | For |
+|---|---|---|
+| `back-end/.env.example` | `back-end/.env` | the API's own settings — an LLM key for real replies, or OAuth credentials for social sign-in |
+| `infrastructure/docker/.env.example` | `infrastructure/docker/.env` | the Docker setup — database password, published ports |
+
+The development stack loads `back-end/.env` too, so a credential added there is
+picked up whether the API runs in the container or on the host. The Docker one
+is optional: every value in it has a working default.
 
 `just dependencies` brings up just the datastores, and `just back-end` /
 `just front-end` run the API and SPA on the host — useful for debugging, and
