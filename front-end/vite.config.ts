@@ -18,6 +18,20 @@ export default defineConfig({
     // origin from the client script's URL, which is the page's own origin.
     host: '0.0.0.0',
     port: 5173,
+    fs: {
+      // Vite otherwise treats the workspace root as servable, and in the
+      // container that root is the whole repository — so `/@fs/` handed out
+      // the back-end source, the compose file and the lockfile to anyone who
+      // could reach the dev server.
+      //
+      // The workspace `node_modules` has to stay in the list: pnpm symlinks
+      // each package's dependencies there, so a narrower list makes Vite
+      // refuse to serve its own dependencies and the page goes blank.
+      allow: [
+        fileURLToPath(new URL('.', import.meta.url)),
+        fileURLToPath(new URL('../node_modules', import.meta.url)),
+      ],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
