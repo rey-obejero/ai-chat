@@ -24,6 +24,20 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
 
+    # A stand-in identity provider for the end-to-end suite (ADR-0029). Off by
+    # default, and deliberately not documented in `.env.example`: it is not a
+    # setting anyone should reach for, and the point of the switch is that a
+    # stray value cannot turn it on.
+    #
+    # Three things must hold before it is registered, and each is checked in
+    # `_test_provider`: this switch, credentials for it, and a base URL on a
+    # known local host. The last one is what stops a real deployment from being
+    # pointed at an unverified provider by setting the other two.
+    test_idp_enabled: bool = False
+    test_idp_base_url: str = ""
+    test_idp_client_id: str = ""
+    test_idp_client_secret: str = ""
+
     # LLM provider — OpenRouter by default (ADR-0018). The key is env-only
     # (ADR-0009) and no default means a missing key fails loudly at request time.
     llm_api_key: str = ""
