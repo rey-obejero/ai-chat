@@ -1,61 +1,65 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
-import { computed, ref } from 'vue'
-import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import IconEye from '~icons/lucide/eye'
 import IconEyeClosed from '~icons/lucide/eye-closed'
 import IconLoaderCircle from '~icons/lucide/loader-circle'
 
 import AppLink from '@/components/AppLink.vue'
-import { safeRedirect } from '@/lib/redirect'
 import AuthField from '../components/AuthField.vue'
 import AuthScreen from '../components/AuthScreen.vue'
-import SocialButtons from '../components/SocialButtons.vue'
-import { useSessionStore } from '../stores/session'
 
-const email = ref('')
+/**
+ * Read the token, then strip it from the address bar before anything else
+ * runs. Left in place it would sit in the URL — and in browser history, and in
+ * any `Referer` — until the form is submitted (ADR-0031).
+ */
+const token = EmailPassword.getResetPasswordTokenFromURL()
+
+if (token) {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('token')
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
-
-const route = useRoute()
 const router = useRouter()
-const session = useSessionStore()
 
-// `redirectTo` comes from the query string, so it is validated rather than
-// trusted: a protocol-relative value would send the user off-origin.
-function redirectTarget(): RouteLocationRaw {
-  return safeRedirect(route.query.redirectTo, { name: 'conversations' })
-}
-
-// Set by the reset view after a successful reset: it does not create a
-// session, so the user is told to sign in with the new password.
-const resetSucceeded = computed(() => route.query.reset === 'success')
+const hasToken = token !== ''
 
 async function submit(): Promise<void> {
   error.value = ''
   loading.value = true
   try {
-    const response = await EmailPassword.signIn({
-      formFields: [
-        { id: 'email', value: email.value },
-        { id: 'password', value: password.value },
-      ],
+    const response = await EmailPassword.submitNewPassword({
+      formFields: [{ id: 'password', value: password.value }],
+      options: {
+        // The SDK reads the token from the URL when this is called, but the URL
+        // no longer carries it, so the captured value is put back into the
+        // request body here. `tenantId` stays in the URL and needs no help.
+        preAPIHook: async ({ url, requestInit }) => {
+          const body = JSON.parse(String(requestInit.body ?? '{}'))
+          body.token = token
+          return { url, requestInit: { ...requestInit, body: JSON.stringify(body) } }
+        },
+      },
     })
 
     if (response.status === 'OK') {
-      await session.refresh()
-      // `push`, not `replace`: keeping sign-in in history makes the back
-      // button after signing in behave predictably.
-      await router.push(redirectTarget())
+      // A reset does not create a session, so the user signs in with the new
+      // password rather than being dropped into the app.
+      await router.replace({ name: 'sign-in', query: { reset: 'success' } })
     } else if (response.status === 'FIELD_ERROR') {
-      error.value = response.formFields[0]?.error ?? 'Check your email and password.'
+      error.value = response.formFields[0]?.error ?? 'Choose a stronger password.'
     } else {
-      error.value = 'That email and password do not match.'
+      // Invalid, expired, or already used — tokens are single-use.
+      error.value = 'This reset link is invalid or has expired.'
     }
   } catch {
     error.value = 'Something went wrong. Please try again.'
@@ -66,34 +70,29 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <AuthScreen title="Sign in" intro="Enter your credentials to access your account">
-    <form class="space-y-5" @submit.prevent="submit">
-      <p v-if="resetSucceeded" class="text-sm font-medium text-ink" role="status">
-        Your password has been reset. Sign in with your new password.
+  <AuthScreen
+    title="Set a new password"
+    :intro="hasToken ? 'Choose a new password for your account' : undefined"
+  >
+    <div v-if="!hasToken" class="space-y-5">
+      <p class="text-body text-ink" role="alert">
+        This password reset link is missing its token, so it cannot be used.
       </p>
+      <p class="text-center text-sm text-subtext">
+        <AppLink :to="{ name: 'forgot-password' }" inline>Request a new link</AppLink>
+      </p>
+    </div>
 
-      <AuthField>
-        <InputText
-          id="email"
-          v-model="email"
-          type="email"
-          autocomplete="email"
-          placeholder="Enter your email"
-          aria-label="Email"
-          required
-          class="w-full"
-        />
-      </AuthField>
-
+    <form v-else class="space-y-5" @submit.prevent="submit">
       <AuthField>
         <Password
           input-id="password"
           v-model="password"
           :feedback="false"
           toggle-mask
-          autocomplete="current-password"
-          placeholder="Enter your password"
-          aria-label="Password"
+          autocomplete="new-password"
+          placeholder="Enter your new password"
+          aria-label="New password"
           required
           fluid
         >
@@ -118,34 +117,28 @@ async function submit(): Promise<void> {
             </button>
           </template>
         </Password>
-        <div class="flex justify-end pt-1">
-          <AppLink :to="{ name: 'forgot-password' }" class="py-1">Forgot password?</AppLink>
-        </div>
       </AuthField>
 
       <p v-if="error" class="text-sm font-medium text-danger" role="alert">
         {{ error }}
       </p>
 
+      <p v-if="error" class="text-center text-sm text-subtext">
+        <AppLink :to="{ name: 'forgot-password' }" inline>Request a new link</AppLink>
+      </p>
+
       <Button
         type="submit"
-        :label="loading ? undefined : 'Continue'"
+        :label="loading ? undefined : 'Set new password'"
         :loading="loading"
         :aria-busy="loading"
-        :aria-label="loading ? 'Continuing' : undefined"
+        :aria-label="loading ? 'Saving' : undefined"
         class="w-full text-sm transition-opacity enabled:hover:!bg-ink enabled:hover:opacity-90"
       >
         <template #loadingicon>
           <IconLoaderCircle class="animate-spin" />
         </template>
       </Button>
-
-      <SocialButtons />
-
-      <p class="text-center text-sm text-subtext">
-        Don't have an account?
-        <AppLink :to="{ name: 'sign-up' }" inline>Sign up</AppLink>
-      </p>
     </form>
   </AuthScreen>
 </template>

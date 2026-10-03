@@ -23,16 +23,17 @@ const mocked = vi.mocked(listSocialProviders)
 
 const Blank = { template: '<div />' }
 
-async function mountSignIn() {
+async function mountSignIn(query: Record<string, string> = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: '/authentication/sign-in', name: 'sign-in', component: Blank },
       { path: '/authentication/sign-up', name: 'sign-up', component: Blank },
+      { path: '/authentication/forgot-password', name: 'forgot-password', component: Blank },
       { path: '/application/conversations/:id?', name: 'conversations', component: Blank },
     ],
   })
-  router.push({ name: 'sign-in' })
+  router.push({ name: 'sign-in', query })
   await router.isReady()
 
   const wrapper = mount(SignInView, {
@@ -68,5 +69,22 @@ describe('SignInView', () => {
 
     expect(wrapper.findAll('p').filter((p) => p.text() === 'or')).toHaveLength(1)
     expect(wrapper.text()).toContain('Continue with Google')
+  })
+
+  // The link used to render as a button with no handler, so it did nothing.
+  it('links to the forgot-password route', async () => {
+    mocked.mockResolvedValue([])
+    const wrapper = await mountSignIn()
+
+    const link = wrapper.findAll('a').find((a) => a.text().includes('Forgot password?'))
+
+    expect(link?.attributes('href')).toBe('/authentication/forgot-password')
+  })
+
+  it('confirms a completed reset', async () => {
+    mocked.mockResolvedValue([])
+    const wrapper = await mountSignIn({ reset: 'success' })
+
+    expect(wrapper.text()).toContain('Your password has been reset')
   })
 })

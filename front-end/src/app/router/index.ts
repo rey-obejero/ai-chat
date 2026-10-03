@@ -37,6 +37,23 @@ const router = createRouter({
       meta: { title: 'Sign In' },
     },
     {
+      path: '/authentication/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/features/auth').then((m) => m.ForgotPasswordView),
+      // Public, like the rest of `/authentication`; stated explicitly rather
+      // than left to inheritance (ADR-0027).
+      meta: { title: 'Reset Password', requiresAuth: false },
+    },
+    {
+      // The path is fixed by SuperTokens, which builds the emailed link as
+      // `{website_base_path}/reset-password` with no trailing slash. Vue Router
+      // matches the trailing-slash form to this route too.
+      path: '/authentication/reset-password',
+      name: 'reset-password',
+      component: () => import('@/features/auth').then((m) => m.ResetPasswordView),
+      meta: { title: 'Set a New Password', requiresAuth: false },
+    },
+    {
       // No component: a grouping route. `meta` is merged into every child, so
       // one `requiresAuth` covers the whole authenticated surface, including
       // routes added later.

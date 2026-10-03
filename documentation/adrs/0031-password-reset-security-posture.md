@@ -38,7 +38,14 @@ is a property of our own URL handling and the reverse proxy's logs, not the SDK.
 - **The token is a bearer secret.** The reset view reads it, strips it from the
   URL on mount, and never renders it. The reverse proxy sends
   `Referrer-Policy: no-referrer` and redacts the `token` query parameter from
-  access logs.
+  access logs. Because the SDK reads the token from the URL at submit time, the
+  captured value is re-injected into the request body rather than restored to
+  the URL.
+- **The routes are public and fixed by the vendor.** The request view is
+  `/authentication/forgot-password` and the reset view is
+  `/authentication/reset-password` — the second is the path the emailed link
+  targets, so it is not ours to rename. Both are `requiresAuth: false`
+  explicitly rather than by inheritance (ADR-0027).
 - **A successful reset does not sign the user in.** The SDK returns no session,
   so the UI sends them to sign-in instead of assuming one.
 
