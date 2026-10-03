@@ -6,9 +6,12 @@ default:
 COMPOSE := "docker compose -f infrastructure/docker/compose.yaml"
 HOST_DEPS := "infrastructure/docker/compose.host-deps.yaml"
 
-# Datastores only. CI and e2e use this and run the API and SPA on the host.
+# Datastores only, plus migrations. CI and e2e use this and run the API and SPA
+# on the host, so nothing else would apply them — and an unmigrated database
+# looks like an API bug rather than a missing step.
 dependencies:
-    {{COMPOSE}} -f {{HOST_DEPS}} up
+    {{COMPOSE}} -f {{HOST_DEPS}} up -d --wait
+    cd back-end && uv run alembic upgrade head
 
 dependencies-stop:
     {{COMPOSE}} stop
