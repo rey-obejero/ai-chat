@@ -123,8 +123,6 @@ async function submit(): Promise<void> {
         </template>
       </Button>
 
-      <p class="text-center text-xs font-medium uppercase tracking-wide text-subtext">or</p>
-
       <SocialButtons />
 
       <p class="text-center text-sm text-subtext">

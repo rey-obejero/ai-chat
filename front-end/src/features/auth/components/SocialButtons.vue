@@ -83,29 +83,33 @@ async function signInWith(thirdPartyId: ProviderId): Promise<void> {
 </script>
 
 <template>
-  <!-- Rendered when there is a button to show *or* something went wrong. On a
+  <!-- The divider lives here, not in the sign-in and sign-up views, so that one
+       condition governs it and the buttons together. With them apart, hiding
+       the buttons left an "or" separating the form from nothing — which is the
+       tell of a hardcoded list.
+       Rendered when there is a button to show *or* something went wrong: on a
        failed lookup there are no buttons, and hiding the message then would
-       leave the user with nothing at all and no idea why. When the list is
-       merely empty — nothing configured — the section disappears entirely,
-       divider included: an "or" with nothing above it is the tell of a
-       hardcoded list. -->
+       leave the user with no idea why. -->
   <div v-if="buttons.length > 0 || error" class="space-y-3">
-    <div class="flex flex-col gap-3">
-      <Button
-        v-for="provider in buttons"
-        :key="provider.id"
-        type="button"
-        severity="secondary"
-        outlined
-        class="justify-center text-sm"
-        :loading="pending === provider.id"
-        :disabled="pending !== null"
-        @click="signInWith(provider.id)"
-      >
-        <component :is="provider.icon" class="mr-2 text-base" />
-        {{ provider.label }}
-      </Button>
-    </div>
+    <template v-if="buttons.length > 0">
+      <p class="text-center text-xs font-medium uppercase tracking-wide text-subtext">or</p>
+      <div class="flex flex-col gap-3">
+        <Button
+          v-for="provider in buttons"
+          :key="provider.id"
+          type="button"
+          severity="secondary"
+          outlined
+          class="justify-center text-sm"
+          :loading="pending === provider.id"
+          :disabled="pending !== null"
+          @click="signInWith(provider.id)"
+        >
+          <component :is="provider.icon" class="mr-2 text-base" />
+          {{ provider.label }}
+        </Button>
+      </div>
+    </template>
     <p v-if="error" class="text-center text-sm font-medium text-danger" role="alert">
       {{ error }}
     </p>
