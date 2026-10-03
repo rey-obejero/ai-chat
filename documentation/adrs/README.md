@@ -82,3 +82,4 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0026](0026-compose-runs-the-whole-stack.md) | Compose runs the whole stack, Caddy included | Accepted | 2026-10-03 |
 | [0027](0027-public-url-namespaces.md) | `/authentication` and `/application` partition the public URL space | Accepted | 2026-10-03 |
 | [0028](0028-no-social-account-linking.md) | Social sign-in never merges into an existing account | Accepted | 2026-10-03 |
+| [0029](0029-gated-test-identity-provider.md) | The application carries a gated stand-in identity provider for tests | Accepted | 2026-10-04 |
