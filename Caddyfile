@@ -5,12 +5,17 @@
 }
 
 :80 {
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy        "strict-origin-when-cross-origin"
+    }
+
     handle /api/* {
-        uri strip_prefix /api
+        # Forward the path untouched: the app mounts its router at /api/v1 and
+        # SuperTokens gates /api/auth, both of which need the prefix to survive.
         reverse_proxy api:8000 {
             # SSE streaming: don't buffer proxied event streams
             flush_interval -1
-            header_up X-Forwarded-Proto {scheme}
         }
     }
 
