@@ -53,23 +53,29 @@ ai-chat/
 Prerequisites: `uv`, `pnpm` 10.15.0, `docker`, `just`.
 
 ```sh
-just install        # uv sync + pnpm install
-just dependencies   # postgres + supertokens (docker compose up)
+just install            # uv sync + pnpm install
+just development        # whole stack behind Caddy at http://localhost
+just development-stop
+just development-logs
+just development-migrate # apply pending migrations to a running stack
+just dependencies       # datastores only (postgres, supertokens, redis)
 just dependencies-stop
-just back-end       # FastAPI on :8000 (reload)
-just front-end      # Vite dev server on :5173
-just test-back-end  # back-end pytest
-just test-front-end # front-end vitest
-just test-e2e       # Playwright (root e2e/)
-just lint           # ruff + eslint + prettier
+just back-end           # FastAPI on :8000 (reload) — for e2e and debugging
+just front-end          # Vite dev server on :5173
+just test-back-end      # back-end pytest
+just test-front-end     # front-end vitest
+just test-e2e           # Playwright (root e2e/)
+just lint               # ruff + eslint + prettier
 ```
 
-`just test-e2e` starts its own SPA, API, and mock model provider. Stop any
-running dev servers first, or Playwright will reuse them and the chat specs will
-fail to reach the mock (ADR-0023).
+`just development` is the normal workflow: the whole stack runs in Compose
+behind Caddy, so development exercises the production routing (ADR-0026). There
+is no TLS in development — the origin is plain `http://localhost` (ADR-0025).
 
-Dev runs the API and SPA directly (`:8000` / `:5173`); Vite proxies `/api`.
-Running the whole stack in containers (api + Caddy) is deferred.
+`just back-end` and `just front-end` remain for debugging. `just test-e2e`
+starts its own SPA, API, and mock model provider, so stop any running dev servers
+first or Playwright will reuse them and the chat specs will fail to reach the
+mock (ADR-0023).
 
 ## Conventions
 

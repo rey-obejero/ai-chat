@@ -45,7 +45,9 @@ uv run pytest
 uv run ruff check . && uv run ruff format --check .
 ```
 
-From the repo root, prefer `just back-end` / `just test-back-end` / `just lint`.
+From the repo root, prefer `just development` for the full stack behind Caddy
+(ADR-0026) and `just test-back-end` / `just lint` for the rest. `just back-end`
+runs the API on the host instead, which is what the e2e suite uses.
 
 ## Architecture rules
 

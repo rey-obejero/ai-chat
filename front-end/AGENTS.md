@@ -46,7 +46,9 @@ pnpm lint           # eslint . --fix
 pnpm format         # prettier --write src
 ```
 
-From the repo root, prefer `just front-end` / `just test-front-end` / `just lint`.
+From the repo root, prefer `just development` for the full stack behind Caddy
+(ADR-0026) and `just test-front-end` / `just lint` for the rest. `just front-end`
+runs Vite on the host instead, which is what the e2e suite uses.
 
 ## Design system
 
