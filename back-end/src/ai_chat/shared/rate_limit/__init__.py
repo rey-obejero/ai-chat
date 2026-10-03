@@ -1,7 +1,8 @@
 from ai_chat.shared.rate_limit.limiter import (
     RateLimitDecision,
     RateLimiter,
-    build_rate_limiter,
+    RateLimitPolicy,
+    build_rate_limit_policy,
     build_storage,
 )
 from ai_chat.shared.rate_limit.middleware import RateLimitMiddleware
@@ -9,7 +10,8 @@ from ai_chat.shared.rate_limit.middleware import RateLimitMiddleware
 __all__ = [
     "RateLimitDecision",
     "RateLimitMiddleware",
+    "RateLimitPolicy",
     "RateLimiter",
-    "build_rate_limiter",
+    "build_rate_limit_policy",
     "build_storage",
 ]

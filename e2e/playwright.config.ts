@@ -43,6 +43,10 @@ export default defineConfig({
         LLM_API_KEY: "e2e-key",
         LLM_BASE_URL: "http://localhost:4010/v1",
         LLM_MODEL: "e2e/mock",
+        // The suite signs in many times from one address and shares buckets
+        // across parallel workers; no e2e test asserts rate limiting, so it is
+        // off here. The 429 path is covered by the back-end suite.
+        RATE_LIMIT_ENABLED: "false",
       },
     },
   ],

@@ -1,5 +1,10 @@
 from ai_chat.shared.config import Settings
-from ai_chat.shared.rate_limit.limiter import RateLimiter, build_rate_limiter, build_storage
+from ai_chat.shared.rate_limit.limiter import (
+    RateLimiter,
+    RateLimitPolicy,
+    build_rate_limit_policy,
+    build_storage,
+)
 
 
 async def test_limiter_allows_up_to_the_limit_then_denies() -> None:
@@ -30,9 +35,27 @@ def test_build_storage_supports_redis_without_connecting() -> None:
     assert type(storage).__name__ == "RedisStorage"
 
 
-def test_build_rate_limiter_reads_settings() -> None:
-    settings = Settings(_env_file=None, rate_limit_chat="5/minute")
+def test_build_rate_limit_policy_reads_settings() -> None:
+    settings = Settings(
+        _env_file=None,
+        rate_limit_rules={"/api/auth": "5/minute"},
+    )
 
-    limiter = build_rate_limiter(settings)
+    policy = build_rate_limit_policy(settings)
 
-    assert isinstance(limiter, RateLimiter)
+    assert isinstance(policy, RateLimitPolicy)
+    assert isinstance(policy.select("/api/auth/signin"), RateLimiter)
+
+
+def test_the_longest_matching_prefix_wins() -> None:
+    # The blanket `/api/auth` limit must not shadow the tighter one on the
+    # reset endpoint that sits beneath it.
+    policy = RateLimitPolicy(
+        build_storage("async+memory://"),
+        {"/api/auth": "20/minute", "/api/auth/user/password/reset": "3/minute"},
+    )
+
+    assert policy.select("/api/auth/signin") is not policy.select(
+        "/api/auth/user/password/reset/token"
+    )
+    assert policy.select("/api/other") is None
