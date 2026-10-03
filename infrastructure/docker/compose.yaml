@@ -41,6 +41,15 @@ services:
     environment:
       POSTGRESQL_CONNECTION_URI: postgresql://${POSTGRES_USER:-aichat}:${POSTGRES_PASSWORD:-aichat}@postgres:5432/supertokens
       SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:-dev-key-change-me}
+    # The end-to-end suite runs a stand-in identity provider on the host, and
+    # the core has to reach it: OIDC discovery, the token exchange and the
+    # user-info call are all server-to-server, done by the core rather than by
+    # the browser. `localhost` inside a container means the container itself,
+    # so the provider gets a name that points at the host instead.
+    #
+    # Harmless otherwise: nothing answers on this name unless the tests run.
+    extra_hosts:
+      - "idp.test:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3567/hello"]
       interval: 5s
