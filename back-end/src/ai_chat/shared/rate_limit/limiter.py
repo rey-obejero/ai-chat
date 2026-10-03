@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from limits import parse
@@ -64,8 +65,36 @@ class RateLimiter:
             retry_after=max(0, int(stats.reset_time - time.time())),
         )
 
+
+class RateLimitPolicy:
+    """The configured prefix rules, sharing one storage backend.
+
+    A prefix can carry its own limit, and the longest match wins, so a single
+    endpoint can be throttled tighter than the prefix that otherwise covers it
+    without a second middleware. Each rule counts in its own namespace, so two
+    rules never share a bucket even when they key on the same identity.
+    """
+
+    def __init__(self, storage: Storage, rules: Mapping[str, str]) -> None:
+        self._storage = storage
+        self._rules = tuple(
+            (
+                prefix,
+                RateLimiter(storage, limit=limit, namespace=f"rate-limit:{prefix}"),
+            )
+            for prefix, limit in rules.items()
+        )
+
+    def select(self, path: str) -> RateLimiter | None:
+        """The limiter for the most specific prefix matching ``path``."""
+        match: tuple[str, RateLimiter] | None = None
+        for rule in self._rules:
+            if path.startswith(rule[0]) and (match is None or len(rule[0]) > len(match[0])):
+                match = rule
+        return match[1] if match is not None else None
+
     async def aclose(self) -> None:
-        """Release the storage connection, if the backend has one."""
+        """Release the shared storage connection, if the backend has one."""
         close = getattr(self._storage, "close", None)
         if close is None:
             return
@@ -74,8 +103,8 @@ class RateLimiter:
             await result
 
 
-def build_rate_limiter(settings: Settings) -> RateLimiter:
-    return RateLimiter(
+def build_rate_limit_policy(settings: Settings) -> RateLimitPolicy:
+    return RateLimitPolicy(
         build_storage(settings.rate_limit_storage_uri),
-        limit=settings.rate_limit_chat,
+        settings.rate_limit_rules,
     )

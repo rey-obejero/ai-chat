@@ -49,10 +49,18 @@ class Settings(BaseSettings):
 
     # Rate limiting (ADR-0020). Memory storage in development; switch to
     # "async+redis://…" once the API runs more than one process.
+    #
+    # Prefix to rate, for the request-rate limit. The longest matching prefix
+    # wins, so a specific path can carry a tighter limit than the blanket
+    # prefix around it — the reset-token endpoint sends mail and is the one
+    # worth throttling hardest.
     rate_limit_enabled: bool = True
     rate_limit_storage_uri: str = "async+memory://"
-    rate_limit_chat: str = "20/minute"
-    rate_limit_path_prefixes: list[str] = ["/api/v1/conversations"]
+    rate_limit_rules: dict[str, str] = {
+        "/api/v1/conversations": "20/minute",
+        "/api/auth": "20/minute",
+        "/api/auth/user/password/reset": "3/minute",
+    }
     rate_limit_fail_open: bool = True
 
     # Durable per-user token quota (ADR-0024), layered under the provider's

@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable
 
 from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ai_chat.shared.exceptions import RateLimitedError, problem_body
-from ai_chat.shared.rate_limit.limiter import RateLimiter
+from ai_chat.shared.rate_limit.limiter import RateLimitPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -35,20 +35,19 @@ class RateLimitMiddleware:
         self,
         app: ASGIApp,
         *,
-        limiter: RateLimiter | None,
+        policy: RateLimitPolicy | None,
         identity: IdentityResolver,
-        path_prefixes: Sequence[str],
         fail_open: bool = True,
     ) -> None:
         self._app = app
-        self._limiter = limiter
+        self._policy = policy
         self._identity = identity
-        self._path_prefixes = tuple(path_prefixes)
         self._fail_open = fail_open
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        limiter = self._limiter
-        if limiter is None or scope["type"] != "http" or not self._matches(scope.get("path", "")):
+        policy = self._policy
+        limiter = policy.select(scope.get("path", "")) if policy is not None else None
+        if limiter is None or scope["type"] != "http":
             await self._app(scope, receive, send)
             return
 
@@ -67,9 +66,6 @@ class RateLimitMiddleware:
             return
 
         await _send_rate_limited(send, scope, decision.retry_after)
-
-    def _matches(self, path: str) -> bool:
-        return any(path.startswith(prefix) for prefix in self._path_prefixes)
 
 
 def _key_for(scope: Scope, user_id: str | None) -> str:
