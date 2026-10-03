@@ -13,7 +13,7 @@ test("sends a message and renders the streamed reply", async ({ signUpPage, page
   await signUpFreshAccount(signUpPage);
 
   await page.getByRole("button", { name: "New conversation" }).click();
-  await expect(page).toHaveURL(/\/conversations\/[\w-]+$/);
+  await expect(page).toHaveURL(/\/application\/conversations\/[\w-]+$/);
 
   await page.getByLabel("Message").fill("Hello from e2e");
   await page.getByRole("button", { name: "Send" }).click();
@@ -49,12 +49,12 @@ test("creates the conversation from the first message on the empty state", async
   page,
 }) => {
   await signUpFreshAccount(signUpPage);
-  await expect(page).toHaveURL(/\/conversations$/);
+  await expect(page).toHaveURL(/\/application\/conversations$/);
 
   await page.getByLabel("Message").fill("Straight to it");
   await page.getByRole("button", { name: "Send" }).click();
 
-  await expect(page).toHaveURL(/\/conversations\/[\w-]+$/);
+  await expect(page).toHaveURL(/\/application\/conversations\/[\w-]+$/);
   await expect(
     page.getByRole("log").getByText("Mock reply: Straight to it", { exact: true }),
   ).toBeVisible();

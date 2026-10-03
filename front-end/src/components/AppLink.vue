@@ -1,12 +1,17 @@
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
+
 /**
  * A link: text only, no fill and no border, darkening on hover. Not a button —
  * see DESIGN.md, Link.
  *
  * Renders a RouterLink when `to` is given, otherwise a button, because some
  * links are actions rather than navigation.
+ *
+ * `to` accepts a route location, not just a string, so callers can navigate by
+ * name and survive the next path change.
  */
-withDefaults(defineProps<{ to?: string; inline?: boolean }>(), {
+withDefaults(defineProps<{ to?: RouteLocationRaw; inline?: boolean }>(), {
   to: undefined,
   inline: false,
 })
