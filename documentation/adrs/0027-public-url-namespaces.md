@@ -48,12 +48,17 @@ same-origin absolute path, including `\`-prefixed values that browsers normalise
 to the protocol-relative form.
 
 **`/api/auth` is SuperTokens' API path and is deliberately not moved into
-`/authentication`.** The OAuth provider consoles point at
-`{api_domain}/api/auth/callback/{provider}`, which SuperTokens' backend handles
-before forwarding the browser to the SPA route `{origin}/authentication/callback`.
-The two look alike and are not. A refactor that "tidied" `/api/auth` under the
-authentication namespace would break provider sign-in silently — the redirect URI
-registered in Google and GitHub would simply stop matching.
+`/authentication`.** The two names look related and are not: `/api/auth` is
+where the SDK exposes its endpoints, and `/authentication` is where the SPA's
+screens live.
+
+The provider console is given the **SPA** route — `{origin}/authentication/callback`.
+The web SDK sends its `frontendRedirectURI` as the provider's redirect URI, and
+this app does not pass `redirectURIOnProviderDashboard` to override it, so the
+browser returns to the SPA, which hands the code to `/api/auth/signinup`. A
+refactor that "tidied" the one into the other would break provider sign-in
+silently: the URI registered with Google and GitHub would stop matching, and the
+failure surfaces at the provider rather than in the app.
 
 ## Consequences
 
