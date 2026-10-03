@@ -1,34 +1,39 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
 import ThirdParty from 'supertokens-web-js/recipe/thirdparty'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import IconGithub from '~icons/logos/github-icon'
 import IconGoogle from '~icons/logos/google-icon'
 
-import { listSocialProviders } from '../api'
+import { listSocialProviders, type SocialProvider } from '../api'
 
-type ProviderId = 'google' | 'github'
-
-const PROVIDERS: { id: ProviderId; label: string; icon: typeof IconGoogle }[] = [
-  { id: 'google', label: 'Continue with Google', icon: IconGoogle },
-  { id: 'github', label: 'Continue with GitHub', icon: IconGithub },
-]
+/**
+ * Brand artwork, by provider id.
+ *
+ * Only providers we have a real mark for appear here. Anything else renders as
+ * a plain button carrying its name — a stand-in icon for an unknown brand would
+ * be inventing branding we do not have.
+ */
+const ICONS: Record<string, Component> = {
+  google: IconGoogle,
+  github: IconGithub,
+}
 
 const route = useRoute()
 const router = useRouter()
 
-// The API is the source of truth; it may name a provider this build has no
-// icon for, and those are ignored rather than rendered blank.
-const available = ref<string[]>([])
+const available = ref<SocialProvider[]>([])
 const error = ref('')
-const pending = ref<ProviderId | null>(null)
+const pending = ref<string | null>(null)
 
 // Providers are configured per deployment, so the list comes from the API
 // rather than being hardcoded — ADR-0010 already decided this, and the code was
 // contradicting it by rendering buttons for unconfigured providers.
-const buttons = computed(() => PROVIDERS.filter((p) => available.value.includes(p.id)))
+const buttons = computed(() =>
+  available.value.map((provider) => ({ ...provider, icon: ICONS[provider.id] })),
+)
 
 onMounted(async () => {
   try {
@@ -55,7 +60,7 @@ function callbackUrl(): URL {
   return url
 }
 
-async function signInWith(thirdPartyId: ProviderId): Promise<void> {
+async function signInWith(thirdPartyId: string): Promise<void> {
   if (pending.value) return
   error.value = ''
   pending.value = thirdPartyId
@@ -68,8 +73,8 @@ async function signInWith(thirdPartyId: ProviderId): Promise<void> {
       // — see ADR-0028. Passing it, or setting it to true, would silently
       // reintroduce auto-linking.
       // Resolved from the router rather than concatenated, so renaming the
-      // route cannot silently desync this from where the view is mounted.
-      // This is *not* the URI registered with the provider: that one is
+      // route cannot silently desync this from where the view is mounted. This
+      // is *not* the URI registered with the provider: that one is
       // SuperTokens' own `/api/auth/callback/{provider}`, handled in its
       // backend before it forwards the browser here.
       frontendRedirectURI: callbackUrl().toString(),
@@ -105,8 +110,8 @@ async function signInWith(thirdPartyId: ProviderId): Promise<void> {
           :disabled="pending !== null"
           @click="signInWith(provider.id)"
         >
-          <component :is="provider.icon" class="mr-2 text-base" />
-          {{ provider.label }}
+          <component :is="provider.icon" v-if="provider.icon" class="mr-2 text-base" />
+          Continue with {{ provider.name }}
         </Button>
       </div>
     </template>

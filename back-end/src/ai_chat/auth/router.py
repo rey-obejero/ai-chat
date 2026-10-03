@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_chat.auth.adapter_supertokens import configured_provider_ids
+from ai_chat.auth.adapter_supertokens import configured_providers
 from ai_chat.auth.dependencies import get_current_user_id
-from ai_chat.auth.schemas import SocialProvidersRead, UserRead
+from ai_chat.auth.schemas import SocialProviderRead, SocialProvidersRead, UserRead
 from ai_chat.auth.service import get_or_create_user
 from ai_chat.shared.config import Settings
 from ai_chat.shared.db import get_session
@@ -29,4 +29,11 @@ async def list_social_providers(request: Request) -> SocialProvidersRead:
     list is wrong in at least one environment at any time (ADR-0010).
     """
     settings: Settings = request.app.state.settings
-    return SocialProvidersRead(providers=configured_provider_ids(settings))
+    return SocialProvidersRead(
+        providers=[
+            # The name is the backend's, and the button wording is the front
+            # end's; keeping them apart stops a label being defined twice.
+            SocialProviderRead(id=provider_id, name=name)
+            for provider_id, name in configured_providers(settings)
+        ]
+    )
