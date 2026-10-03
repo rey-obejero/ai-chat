@@ -4,10 +4,10 @@ default:
     @just --list
 
 dependencies:
-    docker compose up
+    docker compose -f infrastructure/docker/compose.yaml up
 
 dependencies-stop:
-    docker compose stop
+    docker compose -f infrastructure/docker/compose.yaml stop
 
 back-end:
     cd back-end && uv run uvicorn ai_chat.main:app --reload --port 8000 --proxy-headers --forwarded-allow-ips "*"

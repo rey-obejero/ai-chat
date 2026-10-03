@@ -17,9 +17,10 @@ ai-chat/
 ├── front-end/    Vue 3 + Vite SPA (pnpm)
 ├── e2e/          Playwright end-to-end tests (pnpm workspace package)
 ├── documentation/  roadmap + design notes
-├── Caddyfile     reverse proxy (same-origin /api → API, /* → SPA)
-├── compose.yaml  local dev dependencies (postgres+pgvector, supertokens)
-└── Justfile      task runner
+├── infrastructure/docker/  deployment artifacts
+│   ├── Caddyfile     reverse proxy (same-origin /api → API, /* → SPA)
+│   └── compose.yaml  local dev dependencies (postgres+pgvector, supertokens)
+├── Justfile      task runner
 ```
 
 ## Stack (locked)

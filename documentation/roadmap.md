@@ -63,9 +63,10 @@ automatic TLS, and the deploy runbook.
 
 ## Deferred: containerized stack
 
-Removed from `compose.yaml` until their features land: SeaweedFS (document
-storage), the `api` container, and Caddy. `compose.yaml` now carries only the
-local dev dependencies (postgres + supertokens). Reintroduce each when needed.
+Removed from `infrastructure/docker/compose.yaml` until their features land:
+SeaweedFS (document storage), the `api` container, and Caddy. The compose file
+now carries only the local dev dependencies (postgres + supertokens).
+Reintroduce each when needed.
 
 ## Error envelope — future upgrade
 

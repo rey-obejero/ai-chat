@@ -50,14 +50,14 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - run: docker compose up -d --wait
+      - run: docker compose -f infrastructure/docker/compose.yaml up -d --wait
       - name: Wait for SuperTokens
         run: |
           for _ in $(seq 1 60); do
             curl -fsS http://localhost:3567/hello >/dev/null && exit 0
             sleep 2
           done
-          docker compose logs supertokens
+          docker compose -f infrastructure/docker/compose.yaml logs supertokens
           exit 1
       - run: uv sync --frozen
         working-directory: back-end
