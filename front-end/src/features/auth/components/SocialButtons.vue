@@ -62,6 +62,11 @@ async function signInWith(thirdPartyId: ProviderId): Promise<void> {
   try {
     const url = await ThirdParty.getAuthorisationURLWithQueryParamsAndSetState({
       thirdPartyId,
+      // `shouldTryLinkingWithSessionUser` is deliberately never passed. Leaving
+      // it undefined means the SDK attempts no account linking, so a social
+      // sign-in is refused rather than merged when the address already exists
+      // — see ADR-0028. Passing it, or setting it to true, would silently
+      // reintroduce auto-linking.
       // Resolved from the router rather than concatenated, so renaming the
       // route cannot silently desync this from where the view is mounted.
       // This is *not* the URI registered with the provider: that one is
