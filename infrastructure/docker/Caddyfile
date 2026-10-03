@@ -4,7 +4,14 @@
     admin off
 }
 
-:80 {
+# Development origin (ADR-0025). Plain HTTP: `localhost` is loopback, so no
+# certificate is needed, and social providers special-case this exact host.
+# Production replaces this address with a real domain; nothing else changes.
+http://localhost {
+    encode zstd gzip
+
+    # No Strict-Transport-Security: it is ignored over HTTP and would only
+    # risk pinning a local host to HTTPS. It belongs in the production block.
     header {
         X-Content-Type-Options "nosniff"
         Referrer-Policy        "strict-origin-when-cross-origin"
