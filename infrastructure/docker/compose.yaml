@@ -60,6 +60,23 @@ services:
       retries: 5
     logging: *logging
 
+  mailpit:
+    # Catches development mail so no message ever leaves the machine (ADR-0030).
+    # Both ports are published deliberately: the SMTP port so a host-run API can
+    # reach it, and the HTTP API on 8025 so the reset flow is testable and the
+    # UI is browsable. This is a dev dependency, not an application service.
+    image: axllent/mailpit:v1.31.4@sha256:b68349e3a014b90c5610bfb26b2ae36f3892d7b8cf25ee140c6c71c98d2fcf48
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_HTTP_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
   migrate:
     # One-shot: without this the API starts cleanly and then 500s on missing
     # tables, which is a confusing failure. `api` waits for it to succeed.
@@ -88,6 +105,12 @@ services:
       API_BASE_URL: http://localhost
       FRONTEND_URL: http://localhost
       RATE_LIMIT_STORAGE_URI: async+redis://redis:6379/0
+      # Mailpit, reachable by service name inside the network; the host-run API
+      # uses `localhost` instead, which is why this is set per environment.
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_FROM_NAME: AI Chat
+      SMTP_FROM_EMAIL: no-reply@localhost
     logging: *logging
 
   api:
