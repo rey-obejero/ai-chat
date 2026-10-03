@@ -5,7 +5,11 @@
 - **Backfilled:** yes
 - **Deciders:** Rey Obejero
 - **Supersedes:** —
-- **Superseded by:** —
+- **Superseded by:** ADR-0026
+
+> **Superseded by [ADR-0026](0026-compose-runs-the-whole-stack.md).** The API and
+> SPA now run from Compose too, behind the same Caddy as production. This record
+> is kept for history.
 
 ## TL;DR
 

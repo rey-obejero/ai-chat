@@ -79,3 +79,4 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0023](0023-e2e-mock-provider.md) | Chat end-to-end tests run against a mock provider | Accepted | 2026-09-22 |
 | [0024](0024-durable-token-quota.md) | The token quota is a Postgres ledger with a calendar period | Accepted | 2026-09-22 |
 | [0025](0025-caddy-in-development.md) | Caddy fronts development, on plain `http://localhost` | Accepted | 2026-10-03 |
+| [0026](0026-compose-runs-the-whole-stack.md) | Compose runs the whole stack, Caddy included | Accepted | 2026-10-03 |
