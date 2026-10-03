@@ -70,7 +70,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # The application's own settings — LLM key, OAuth credentials — come from
+    # this file, which is also what a host-run API reads. Loading it here is
+    # what keeps a secret in one place instead of a copy per runner. Absent is
+    # fine: every setting has a default.
+    env_file:
+      - path: ../../back-end/.env
+        required: false
     environment: &api-env
+      # Only what differs inside the container. `environment` wins over
+      # `env_file`, so these override the host-run values deliberately.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aichat}:${POSTGRES_PASSWORD:-aichat}@postgres:5432/aichat
       SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
       SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:-dev-key-change-me}
@@ -79,13 +88,6 @@ services:
       API_BASE_URL: http://localhost
       FRONTEND_URL: http://localhost
       RATE_LIMIT_STORAGE_URI: async+redis://redis:6379/0
-      LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
-      LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
     logging: *logging
 
   api:
@@ -102,6 +104,9 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    env_file:
+      - path: ../../back-end/.env
+        required: false
     environment: *api-env
     volumes:
       # Source only, so editing a Python file reloads the API. The virtualenv
