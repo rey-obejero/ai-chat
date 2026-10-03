@@ -36,8 +36,9 @@ not available here.
   automatically.
 - `API_BASE_URL` and `FRONTEND_URL` are both `http://localhost` in development.
   Both must be loopback for SuperTokens' insecure-cookie path.
-- Social sign-in registers `http://localhost/api/auth/callback/{provider}` —
-  SuperTokens' backend callback, not an SPA route.
+- Social sign-in registers `http://localhost/authentication/callback` with each
+  provider — the SPA route, because the web SDK sends its `frontendRedirectURI`
+  as the provider's redirect URI.
 - No certificate tooling (`mkcert`, `libnss3-tools`) in the development setup.
 
 ## Consequences

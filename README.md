@@ -114,13 +114,28 @@ what the e2e suite uses so it can supply its own mock provider (ADR-0023).
 
 ### OAuth redirect URIs
 
-Social sign-in is configured per provider. Register the **SuperTokens** callback,
-not an SPA route:
+Social sign-in is configured per provider. Register the **SPA callback route**
+with each provider — not `/api/auth/...`:
 
 ```
-http://localhost/api/auth/callback/google
-http://localhost/api/auth/callback/github
+http://localhost/authentication/callback
 ```
+
+The same URI serves every provider; providers distinguish by their own client
+credentials, not by the path. It is the SPA route because the web SDK sends its
+`frontendRedirectURI` as the provider's redirect URI, and the app does not pass
+`redirectURIOnProviderDashboard` to override that. The provider sends the browser
+back to this page, which hands the authorization code to SuperTokens' backend to
+exchange.
+
+Two consequences worth knowing:
+
+- **`/api/auth/callback/{provider}` must not be registered.** That path is part
+  of SuperTokens' API, and it is the redirect target only when the app passes
+  `redirectURIOnProviderDashboard` explicitly. Registering it produces a sign-in
+  that fails at the provider with a redirect-URI mismatch.
+- **Nothing else needs to match.** The SPA route is about where the browser
+  lands, so it is the same for Google and GitHub.
 
 Development and production entries coexist; Google permits up to 100 redirect
 URIs per client.
