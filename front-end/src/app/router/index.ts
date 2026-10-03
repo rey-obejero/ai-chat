@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { useSessionStore } from '@/features/auth'
+import { safeRedirect } from '@/lib/redirect'
 
 /**
  * The public URL space is partitioned into two namespaces (ADR-0027):
@@ -74,7 +75,10 @@ router.beforeEach(async (to) => {
   }
 
   if ((to.name === 'sign-in' || to.name === 'sign-up') && session.isAuthenticated) {
-    return { name: 'conversations' }
+    // Honour the destination here too. Dropping it sent an already-signed-in
+    // user to the conversation list even when the link they followed named a
+    // specific conversation.
+    return safeRedirect(to.query.redirectTo, { name: 'conversations' })
   }
 
   return true
