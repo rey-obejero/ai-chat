@@ -2,8 +2,7 @@
 
 ![Conversations View](./documentation/assets/screenshot.png)
 
-A ChatGPT-style assistant with document retrieval, tool calling, and custom
-skills.
+A web-based AI chat interface.
 
 ## Contents
 
