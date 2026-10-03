@@ -3,19 +3,31 @@ set dotenv-load := false
 default:
     @just --list
 
-# Dependencies only — CI and e2e bring up these and run the app on the host.
+COMPOSE := "docker compose -f infrastructure/docker/compose.yaml"
+HOST_DEPS := "infrastructure/docker/compose.host-deps.yaml"
+
+# Datastores only. CI and e2e use this and run the API and SPA on the host.
 dependencies:
-    docker compose -f infrastructure/docker/compose.yaml -f infrastructure/docker/compose.host-deps.yaml up
+    {{COMPOSE}} -f {{HOST_DEPS}} up
 
 dependencies-stop:
-    docker compose -f infrastructure/docker/compose.yaml stop
+    {{COMPOSE}} stop
 
-# The whole stack behind Caddy at http://localhost (ADR-0026).
+# The whole stack behind Caddy at http://localhost (ADR-0026). Runs in the
+# foreground; use development-logs in another terminal to follow output.
 development:
-    docker compose -f infrastructure/docker/compose.yaml --profile full up
+    {{COMPOSE}} --profile full up --build
 
 development-stop:
-    docker compose -f infrastructure/docker/compose.yaml --profile full stop
+    {{COMPOSE}} --profile full stop
+
+development-logs:
+    {{COMPOSE}} --profile full logs -f
+
+# `api` already waits on the compose `migrate` service, so this is only needed
+# to apply a new revision to a stack that is already running.
+development-migrate:
+    {{COMPOSE}} --profile full run --rm migrate
 
 back-end:
     cd back-end && uv run uvicorn ai_chat.main:app --reload --port 8000 --proxy-headers --forwarded-allow-ips "*"
