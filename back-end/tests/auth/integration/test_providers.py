@@ -4,7 +4,7 @@ from ai_chat.shared.config import Settings
 from conftest import _build_app
 
 
-async def _providers(app, *, session_factory=None):
+async def _providers(app):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         return await client.get("/api/v1/auth/providers")
 
@@ -44,7 +44,28 @@ async def test_providers_lists_only_configured_ones(session_factory) -> None:
 
     response = await _providers(app)
 
-    assert response.json() == {"providers": ["google"]}
+    assert response.json() == {"providers": [{"id": "google", "name": "Google"}]}
+
+
+async def test_providers_carry_a_display_name(session_factory) -> None:
+    # The name travels with the id so the front end does not keep a second copy
+    # of a label the backend already knows — the two would drift.
+    app = _app(
+        session_factory,
+        google_client_id="id",
+        google_client_secret="secret",
+        github_client_id="id",
+        github_client_secret="secret",
+    )
+
+    response = await _providers(app)
+
+    assert response.json() == {
+        "providers": [
+            {"id": "google", "name": "Google"},
+            {"id": "github", "name": "GitHub"},
+        ]
+    }
 
 
 async def test_providers_is_public(session_factory) -> None:
@@ -54,14 +75,16 @@ async def test_providers_is_public(session_factory) -> None:
     response = await _providers(app)
 
     assert response.status_code == 200
-    assert response.json() == {"providers": ["google"]}
 
 
-async def test_providers_discloses_no_credential_state(session_factory) -> None:
-    app = _app(session_factory, google_client_id="id", google_client_secret="secret")
+async def test_providers_discloses_no_credentials(session_factory) -> None:
+    app = _app(
+        session_factory,
+        google_client_id="client-id-value",
+        google_client_secret="client-secret-value",
+    )
 
     response = await _providers(app)
 
-    body = response.text
-    assert "secret" not in body
-    assert "id" not in body.split('"providers"')[0]
+    assert "client-secret-value" not in response.text
+    assert "client-id-value" not in response.text
