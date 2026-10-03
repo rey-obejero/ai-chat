@@ -7,11 +7,13 @@ Everything else depends on `ai_chat.auth.dependencies.get_current_user_id` and
 from __future__ import annotations
 
 from http import HTTPStatus
+from urllib.parse import urlparse
 
 from supertokens_python import InputAppInfo, SupertokensConfig, init
 from supertokens_python.asyncio import get_user
 from supertokens_python.framework import BaseRequest, BaseResponse
 from supertokens_python.framework.fastapi import get_middleware
+from supertokens_python.logger import log_debug_message
 from supertokens_python.recipe import emailpassword, session, thirdparty
 from supertokens_python.recipe.session import InputErrorHandlers
 from supertokens_python.recipe.session.framework.fastapi import verify_session
@@ -49,7 +51,58 @@ def _providers(settings: Settings) -> list[ProviderInput]:
                     )
                 )
             )
+
+    test_provider = _test_provider(settings)
+    if test_provider is not None:
+        providers.append(test_provider)
+
     return providers
+
+
+TEST_PROVIDER_ID = "test-idp"
+
+# The only hosts the stand-in provider may live on. A real deployment cannot
+# accidentally register an unverified identity provider by setting a flag and a
+# URL, because a URL pointing anywhere else is refused.
+TEST_PROVIDER_HOSTS = frozenset({"idp.test", "localhost", "127.0.0.1"})
+
+
+def _test_provider(settings: Settings) -> ProviderInput | None:
+    """The local identity provider the end-to-end suite runs (ADR-0029).
+
+    Registered only when all three hold: an explicit switch, credentials, and a
+    base URL on a known local host. Each is checked here rather than asserted in
+    a comment, so the guard is the code.
+    """
+    if not settings.test_idp_enabled:
+        return None
+    if not settings.test_idp_base_url:
+        return None
+    if not (settings.test_idp_client_id and settings.test_idp_client_secret):
+        return None
+
+    host = urlparse(settings.test_idp_base_url).hostname
+    if host not in TEST_PROVIDER_HOSTS:
+        log_debug_message("test identity provider ignored: base URL host is not a test host")
+        return None
+
+    return ProviderInput(
+        config=ProviderConfig(
+            third_party_id=TEST_PROVIDER_ID,
+            name="Test",
+            # Discovery rather than the individual endpoints, so the spec
+            # exercises the same path a real provider is configured with.
+            oidc_discovery_endpoint=(
+                f"{settings.test_idp_base_url.rstrip('/')}/.well-known/openid-configuration"
+            ),
+            clients=[
+                ProviderClientConfig(
+                    client_id=settings.test_idp_client_id,
+                    client_secret=settings.test_idp_client_secret,
+                )
+            ],
+        )
+    )
 
 
 def configured_providers(settings: Settings) -> list[tuple[str, str]]:
