@@ -24,6 +24,18 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
 
+    # Transactional email over SMTP (ADR-0030). An empty `smtp_host` means mail
+    # is unconfigured: the reset endpoint then fails loudly instead of silently
+    # reporting success and sending nothing. Development catches mail in
+    # Mailpit — `localhost` when the API runs on the host, `mailpit` in Compose.
+    smtp_host: str = ""
+    smtp_port: int = 1025
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_name: str = ""
+    smtp_from_email: str = ""
+    smtp_secure: bool = False
+
     # A stand-in identity provider for the end-to-end suite (ADR-0029). Off by
     # default, and deliberately not documented in `.env.example`: it is not a
     # setting anyone should reach for, and the point of the switch is that a

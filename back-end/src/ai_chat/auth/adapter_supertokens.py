@@ -7,14 +7,23 @@ Everything else depends on `ai_chat.auth.dependencies.get_current_user_id` and
 from __future__ import annotations
 
 from http import HTTPStatus
+from typing import Any
 from urllib.parse import urlparse
 
 from supertokens_python import InputAppInfo, SupertokensConfig, init
 from supertokens_python.asyncio import get_user
 from supertokens_python.framework import BaseRequest, BaseResponse
 from supertokens_python.framework.fastapi import get_middleware
+from supertokens_python.ingredients.emaildelivery.types import (
+    EmailDeliveryConfig,
+    EmailDeliveryInterface,
+    SMTPSettings,
+    SMTPSettingsFrom,
+)
 from supertokens_python.logger import log_debug_message
 from supertokens_python.recipe import emailpassword, session, thirdparty
+from supertokens_python.recipe.emailpassword import SMTPService
+from supertokens_python.recipe.emailpassword.types import EmailTemplateVars
 from supertokens_python.recipe.session import InputErrorHandlers
 from supertokens_python.recipe.session.framework.fastapi import verify_session
 from supertokens_python.recipe.thirdparty.provider import (
@@ -139,15 +148,69 @@ async def _on_unauthorised(
     return response
 
 
+class MailNotConfiguredError(RuntimeError):
+    """Raised when the reset flow needs to send mail but SMTP is unset."""
+
+
+class _UnconfiguredEmailDelivery(EmailDeliveryInterface[EmailTemplateVars]):
+    """Fails loudly where the SDK default fails silently.
+
+    SuperTokens' default email delivery POSTs the reset link to SuperTokens'
+    own service and swallows every error, so an unconfigured deployment answers
+    a reset request with success and sends nothing. Raising here turns that
+    invisible no-op into a server error someone can read.
+    """
+
+    async def send_email(
+        self, template_vars: EmailTemplateVars, user_context: dict[str, Any]
+    ) -> None:
+        raise MailNotConfiguredError(
+            "SMTP is not configured, so the password reset email cannot be "
+            "sent. Set SMTP_HOST and SMTP_FROM_EMAIL (see .env.example)."
+        )
+
+
+def _email_delivery(settings: Settings) -> EmailDeliveryConfig[EmailTemplateVars]:
+    """The email transport SuperTokens sends password-reset mail through.
+
+    Configured over plain SMTP so the settings are provider-agnostic: Mailpit
+    in development, Resend (or any SMTP host) in production.
+    """
+    if not settings.smtp_host or not settings.smtp_from_email:
+        return EmailDeliveryConfig(service=_UnconfiguredEmailDelivery())
+
+    return EmailDeliveryConfig(
+        service=SMTPService(
+            SMTPSettings(
+                host=settings.smtp_host,
+                port=settings.smtp_port,
+                from_=SMTPSettingsFrom(
+                    settings.smtp_from_name or settings.app_name,
+                    settings.smtp_from_email,
+                ),
+                username=settings.smtp_username or None,
+                password=settings.smtp_password or None,
+                secure=settings.smtp_secure,
+            )
+        )
+    )
+
+
+def _app_info(settings: Settings) -> InputAppInfo:
+    """The SuperTokens app identity. `website_base_path` is load-bearing: it is
+    where the reset link points, so it must match the SPA's auth routes."""
+    return InputAppInfo(
+        app_name=settings.app_name,
+        api_domain=settings.api_base_url,
+        website_domain=settings.frontend_url,
+        api_base_path="/api/auth",
+        website_base_path="/authentication",
+    )
+
+
 def init_supertokens(settings: Settings) -> None:
     init(
-        app_info=InputAppInfo(
-            app_name=settings.app_name,
-            api_domain=settings.api_base_url,
-            website_domain=settings.frontend_url,
-            api_base_path="/api/auth",
-            website_base_path="/authentication",
-        ),
+        app_info=_app_info(settings),
         supertokens_config=SupertokensConfig(
             connection_uri=settings.supertokens_connection_uri,
             api_key=settings.supertokens_api_key_or_none,
@@ -155,7 +218,7 @@ def init_supertokens(settings: Settings) -> None:
         framework="fastapi",
         recipe_list=[
             session.init(error_handlers=InputErrorHandlers(on_unauthorised=_on_unauthorised)),
-            emailpassword.init(),
+            emailpassword.init(email_delivery=_email_delivery(settings)),
             thirdparty.init(
                 sign_in_and_up_feature=thirdparty.SignInAndUpFeature(providers=_providers(settings))
             ),
