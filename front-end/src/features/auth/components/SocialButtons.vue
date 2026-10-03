@@ -82,6 +82,10 @@ async function signInWith(thirdPartyId: string): Promise<void> {
     window.location.assign(url)
   } catch {
     error.value = 'Social sign-in is unavailable right now.'
+  } finally {
+    // Cleared on the success path too. The page normally unloads as the browser
+    // leaves for the provider, but if that hand-off never happens the buttons
+    // would stay disabled for the life of the view with no way back.
     pending.value = null
   }
 }
