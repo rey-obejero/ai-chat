@@ -2,7 +2,7 @@
 import Button from 'primevue/button'
 import ThirdParty from 'supertokens-web-js/recipe/thirdparty'
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import IconGithub from '~icons/logos/github-icon'
 import IconGoogle from '~icons/logos/google-icon'
@@ -16,6 +16,7 @@ const PROVIDERS: { id: ProviderId; label: string; icon: typeof IconGoogle }[] = 
   { id: 'github', label: 'Continue with GitHub', icon: IconGithub },
 ]
 
+const route = useRoute()
 const router = useRouter()
 
 // The API is the source of truth; it may name a provider this build has no
@@ -37,6 +38,23 @@ onMounted(async () => {
   }
 })
 
+/**
+ * Where SuperTokens should send the browser once the provider is done.
+ *
+ * `redirectTo` is carried across the round trip as a query parameter on this
+ * URL — the user leaves the site entirely, so in-page state does not survive.
+ * It is re-validated on arrival by the callback view, because a value that
+ * round-trips through a URL is user-controllable.
+ */
+function callbackUrl(): URL {
+  const url = new URL(router.resolve({ name: 'auth-callback' }).href, window.location.origin)
+  const redirectTo = route.query.redirectTo
+  if (typeof redirectTo === 'string' && redirectTo.length > 0) {
+    url.searchParams.set('redirectTo', redirectTo)
+  }
+  return url
+}
+
 async function signInWith(thirdPartyId: ProviderId): Promise<void> {
   if (pending.value) return
   error.value = ''
@@ -49,10 +67,7 @@ async function signInWith(thirdPartyId: ProviderId): Promise<void> {
       // This is *not* the URI registered with the provider: that one is
       // SuperTokens' own `/api/auth/callback/{provider}`, handled in its
       // backend before it forwards the browser here.
-      frontendRedirectURI: new URL(
-        router.resolve({ name: 'auth-callback' }).href,
-        window.location.origin,
-      ).toString(),
+      frontendRedirectURI: callbackUrl().toString(),
     })
     window.location.assign(url)
   } catch {
