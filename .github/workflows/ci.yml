@@ -50,7 +50,7 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - run: docker compose -f infrastructure/docker/compose.yaml up -d --wait
+      - run: docker compose -f infrastructure/docker/compose.yaml -f infrastructure/docker/compose.host-deps.yaml up -d --wait
       - name: Wait for SuperTokens
         run: |
           for _ in $(seq 1 60); do

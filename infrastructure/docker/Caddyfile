@@ -1,5 +1,9 @@
 # Caddy — TLS termination + routing
-# /api/* -> FastAPI, everything else -> front-end static build
+# /api/* -> FastAPI, everything else -> the front-end
+#
+# One file serves development and production. Only the SPA upstream differs:
+# development points at the Vite dev server, production at the built assets
+# (see the SPA_UPSTREAM comment on the `handle` block).
 {
     admin off
 }
@@ -27,9 +31,10 @@ http://localhost {
     }
 
     handle {
-        root * /srv/web
-        try_files {path} /index.html
-        file_server
+        # The Vite dev server in development; a static build in production,
+        # served with `file_server` instead. Both handle SPA history fallback,
+        # so there is no `try_files` here.
+        reverse_proxy {$SPA_UPSTREAM:front-end:5173}
     }
 
     log {

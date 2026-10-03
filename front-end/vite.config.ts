@@ -13,6 +13,10 @@ export default defineConfig({
     },
   },
   server: {
+    // 0.0.0.0 so the container is reachable from Caddy. No HMR configuration
+    // is needed: with no `hmr.host` or `clientPort`, Vite derives the socket
+    // origin from the client script's URL, which is the page's own origin.
+    host: '0.0.0.0',
     port: 5173,
     proxy: {
       '/api': {
