@@ -4,6 +4,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AuthCallbackView from '@/features/auth/views/AuthCallbackView.vue'
+import { rememberRedirect } from '@/lib/redirect'
 
 const signInAndUp = vi.fn()
 
@@ -28,9 +29,9 @@ function makeRouter() {
   })
 }
 
-async function mountCallback(query: Record<string, string> = {}) {
+async function mountCallback() {
   const router = makeRouter()
-  router.push({ name: 'auth-callback', query })
+  router.push({ name: 'auth-callback' })
   await router.isReady()
   const wrapper = mount(AuthCallbackView, {
     global: { plugins: [router, setActivePinia(createPinia())] },
@@ -40,7 +41,10 @@ async function mountCallback(query: Record<string, string> = {}) {
 }
 
 describe('AuthCallbackView', () => {
-  beforeEach(() => signInAndUp.mockReset())
+  beforeEach(() => {
+    signInAndUp.mockReset()
+    sessionStorage.clear()
+  })
 
   it('lands on the conversations route by default', async () => {
     signInAndUp.mockResolvedValue({ status: 'OK' })
@@ -49,18 +53,19 @@ describe('AuthCallbackView', () => {
     expect(router.currentRoute.value.name).toBe('conversations')
   })
 
-  it('returns the user to the requested URL', async () => {
+  it('returns the user to the destination remembered before the provider trip', async () => {
     signInAndUp.mockResolvedValue({ status: 'OK' })
-    const { router } = await mountCallback({ redirectTo: '/application/conversations/abc' })
+    rememberRedirect('/application/conversations/abc')
+    const { router } = await mountCallback()
 
     expect(router.currentRoute.value.fullPath).toBe('/application/conversations/abc')
   })
 
-  // The dangerous case: the value survived a round trip through a URL the
-  // provider redirected to, so it is attacker-controllable.
-  it('refuses a protocol-relative redirectTo', async () => {
+  // The dangerous case: an off-origin value must never be followed.
+  it('refuses a protocol-relative destination', async () => {
     signInAndUp.mockResolvedValue({ status: 'OK' })
-    const { router } = await mountCallback({ redirectTo: '//evil.example' })
+    rememberRedirect('//evil.example')
+    const { router } = await mountCallback()
 
     expect(router.currentRoute.value.name).toBe('conversations')
     expect(router.currentRoute.value.fullPath).not.toContain('evil.example')
@@ -79,7 +84,8 @@ describe('AuthCallbackView', () => {
 
   it('keeps redirectTo on the link back to sign-in', async () => {
     signInAndUp.mockResolvedValue({ status: 'SIGN_IN_UP_NOT_ALLOWED', reason: 'X' })
-    const { wrapper } = await mountCallback({ redirectTo: '/application/conversations/abc' })
+    rememberRedirect('/application/conversations/abc')
+    const { wrapper } = await mountCallback()
 
     // Asserted by parsing rather than by substring: `/` is legal unencoded in a
     // query value, so the exact spelling is not the contract — surviving the

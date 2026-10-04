@@ -2,10 +2,10 @@
 import ProgressSpinner from 'primevue/progressspinner'
 import ThirdParty from 'supertokens-web-js/recipe/thirdparty'
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 
 import AppLink from '@/components/AppLink.vue'
-import { safeRedirect } from '@/lib/redirect'
+import { safeRedirect, takeRedirect } from '@/lib/redirect'
 
 import AuthScreen from '../components/AuthScreen.vue'
 import { useSessionStore } from '../stores/session'
@@ -25,18 +25,19 @@ const COPY = {
 type Failure = keyof typeof COPY
 
 const error = ref<Failure | ''>('')
-const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 
-// The user left the site entirely and came back through the provider, so the
-// original intent travels in the callback URL. Validated for the same reason as
-// everywhere else: it is user-controllable.
-const redirectTo = computed(() => safeRedirect(route.query.redirectTo, { name: 'conversations' }))
+// The destination was stored in the tab before the browser left for the
+// provider (the callback URL itself must carry no query — see SocialButtons).
+// Reading it here also clears it, and it is validated because it is still
+// user-controllable at the point it was stored.
+const rememberedRedirect = takeRedirect()
+const redirectTarget = safeRedirect(rememberedRedirect, { name: 'conversations' })
 
 const signInLink = computed(() => ({
   name: 'sign-in',
-  query: { redirectTo: route.query.redirectTo },
+  query: rememberedRedirect ? { redirectTo: rememberedRedirect } : {},
 }))
 
 onMounted(async () => {
@@ -45,7 +46,7 @@ onMounted(async () => {
 
     if (response.status === 'OK') {
       await session.refresh()
-      await router.replace(redirectTo.value)
+      await router.replace(redirectTarget)
       return
     }
 
