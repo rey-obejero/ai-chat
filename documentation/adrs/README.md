@@ -86,3 +86,4 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0030](0030-transactional-mail-over-smtp.md) | Transactional mail goes out over SMTP, caught by Mailpit in development | Accepted | 2026-10-04 |
 | [0031](0031-password-reset-security-posture.md) | Password reset never reveals whether an account exists | Accepted | 2026-10-04 |
 | [0032](0032-rate-limiting-covers-auth.md) | Rate limiting runs outside SuperTokens and covers the auth endpoints | Accepted | 2026-10-04 |
+| [0033](0033-social-e2e-local-oidc-provider.md) | Social sign-in end-to-end tests run against a local OIDC provider | Accepted | 2026-10-04 |

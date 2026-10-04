@@ -29,6 +29,15 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      // A real, local OIDC provider, so the social specs exercise discovery,
+      // JWKS verification and the token exchange without reaching Google or
+      // GitHub (ADR-0033).
+      command: "node support/mock-idp-server.mjs",
+      url: "http://localhost:4011/health",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
       command: "pnpm --dir ../front-end dev --port 5173",
       url: "http://localhost:5173",
       reuseExistingServer: !process.env.CI,
@@ -47,6 +56,11 @@ export default defineConfig({
         // across parallel workers; no e2e test asserts rate limiting, so it is
         // off here. The 429 path is covered by the back-end suite.
         RATE_LIMIT_ENABLED: "false",
+        // The gated stand-in identity provider (ADR-0029). Off everywhere else.
+        TEST_IDP_ENABLED: "true",
+        TEST_IDP_BASE_URL: "http://localhost:4011",
+        TEST_IDP_CLIENT_ID: "test-idp-client",
+        TEST_IDP_CLIENT_SECRET: "test-idp-secret",
       },
     },
   ],
