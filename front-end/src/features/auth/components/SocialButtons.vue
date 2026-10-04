@@ -7,6 +7,7 @@ import { useRoute, useRouter } from 'vue-router'
 import IconGithub from '~icons/logos/github-icon'
 import IconGoogle from '~icons/logos/google-icon'
 
+import { rememberRedirect } from '@/lib/redirect'
 import { listSocialProviders, type SocialProvider } from '../api'
 
 /**
@@ -46,18 +47,13 @@ onMounted(async () => {
 /**
  * Where SuperTokens should send the browser once the provider is done.
  *
- * `redirectTo` is carried across the round trip as a query parameter on this
- * URL — the user leaves the site entirely, so in-page state does not survive.
- * It is re-validated on arrival by the callback view, because a value that
- * round-trips through a URL is user-controllable.
+ * This is the URL registered with the provider, so it must carry **no query
+ * string**: Google and GitHub reject a `redirect_uri` that does not exactly
+ * match the registered one, which is what a `?redirectTo=…` here caused. The
+ * destination is remembered in the tab instead — see `rememberRedirect`.
  */
 function callbackUrl(): URL {
-  const url = new URL(router.resolve({ name: 'auth-callback' }).href, window.location.origin)
-  const redirectTo = route.query.redirectTo
-  if (typeof redirectTo === 'string' && redirectTo.length > 0) {
-    url.searchParams.set('redirectTo', redirectTo)
-  }
-  return url
+  return new URL(router.resolve({ name: 'auth-callback' }).href, window.location.origin)
 }
 
 async function signInWith(thirdPartyId: string): Promise<void> {
@@ -65,6 +61,9 @@ async function signInWith(thirdPartyId: string): Promise<void> {
   error.value = ''
   pending.value = thirdPartyId
   try {
+    // The user leaves the site, so in-page state does not survive; the tab's
+    // storage does, and it is read back on the callback.
+    rememberRedirect(route.query.redirectTo)
     const url = await ThirdParty.getAuthorisationURLWithQueryParamsAndSetState({
       thirdPartyId,
       // `shouldTryLinkingWithSessionUser` is deliberately never passed. Leaving

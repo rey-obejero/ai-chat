@@ -127,12 +127,19 @@ credentials, not by the path. It is the SPA route because the web SDK sends its
 back to this page, which hands the authorization code to SuperTokens' backend to
 exchange.
 
-Two consequences worth knowing:
+Three consequences worth knowing:
 
 - **`/api/auth/callback/{provider}` must not be registered.** That path is part
   of SuperTokens' API, and it is the redirect target only when the app passes
   `redirectURIOnProviderDashboard` explicitly. Registering it produces a sign-in
   that fails at the provider with a redirect-URI mismatch.
+- **The registered URL must carry no query string.** Google and GitHub both
+  reject a `redirect_uri` that does not exactly match, so the app never appends
+  a `?redirectTo=…` (or anything else) to this URL. That was a real bug: the
+  post-sign-in destination used to ride on the callback URL and both providers
+  refused with `redirect_uri_mismatch`. The destination is now remembered in
+  the tab's `sessionStorage` and read back on the callback. It is a validated
+  path, never a token.
 - **Nothing else needs to match.** The SPA route is about where the browser
   lands, so it is the same for Google and GitHub.
 
