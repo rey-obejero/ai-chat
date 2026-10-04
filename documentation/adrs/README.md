@@ -87,3 +87,4 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0031](0031-password-reset-security-posture.md) | Password reset never reveals whether an account exists | Accepted | 2026-10-04 |
 | [0032](0032-rate-limiting-covers-auth.md) | Rate limiting runs outside SuperTokens and covers the auth endpoints | Accepted | 2026-10-04 |
 | [0033](0033-social-e2e-local-oidc-provider.md) | Social sign-in end-to-end tests run against a local OIDC provider | Accepted | 2026-10-04 |
+| [0034](0034-refuse-social-sign-in-on-existing-email.md) | A social sign-in is refused when its email already has an account | Accepted | 2026-10-04 |

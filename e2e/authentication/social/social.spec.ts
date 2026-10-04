@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { expect, test } from "../fixtures";
+import { seedUser } from "../support/test-user";
 
 // The specs share one mock identity provider whose behaviour is set through a
 // control endpoint, so they must not overlap — two running at once would race
@@ -68,6 +69,18 @@ test("reports when the provider shares no email", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/authentication\/callback/);
   await expect(page.getByText(/did not share an email/i)).toBeVisible();
+});
+
+test("refuses to create a second account for an existing email", async ({ page }) => {
+  // ADR-0034: a social sign-in presenting an email that already belongs to a
+  // password account is refused, and no account is created or merged.
+  const existing = await seedUser();
+  await configureIdp({ email: existing.email, behaviour: "ok", emailVerified: true });
+
+  await startSocialSignIn(page);
+
+  await expect(page).toHaveURL(/\/authentication\/callback/);
+  await expect(page.getByText(/already has an account/i)).toBeVisible();
 });
 
 test("returns to the app when the provider refuses consent", async ({ page }) => {

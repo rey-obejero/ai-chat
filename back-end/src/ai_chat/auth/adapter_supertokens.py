@@ -11,7 +11,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from supertokens_python import InputAppInfo, SupertokensConfig, init
-from supertokens_python.asyncio import get_user
+from supertokens_python.asyncio import get_user, list_users_by_account_info
 from supertokens_python.framework import BaseRequest, BaseResponse
 from supertokens_python.framework.fastapi import get_middleware
 from supertokens_python.ingredients.emaildelivery.types import (
@@ -34,11 +34,18 @@ from supertokens_python.recipe.emailpassword.utils import (
 from supertokens_python.recipe.session import InputErrorHandlers
 from supertokens_python.recipe.session.asyncio import revoke_all_sessions_for_user
 from supertokens_python.recipe.session.framework.fastapi import verify_session
+from supertokens_python.recipe.thirdparty.interfaces import (
+    RecipeInterface as ThirdPartyRecipeInterface,
+)
+from supertokens_python.recipe.thirdparty.interfaces import (
+    SignInUpNotAllowed,
+)
 from supertokens_python.recipe.thirdparty.provider import (
     ProviderClientConfig,
     ProviderConfig,
     ProviderInput,
 )
+from supertokens_python.types.base import AccountInfoInput
 
 from ai_chat.shared.config import Settings
 from ai_chat.shared.exceptions import PROBLEM_JSON, problem_body
@@ -255,6 +262,74 @@ def _revoke_sessions_on_password_change(original: RecipeInterface) -> RecipeInte
     return original
 
 
+def _refuse_sign_in_when_email_exists(
+    original: ThirdPartyRecipeInterface,
+) -> ThirdPartyRecipeInterface:
+    """Refuse a social sign-in whose email already belongs to another account.
+
+    ADR-0028 requires identities to be neither merged nor duplicated. The SDK's
+    default account linking does not do this: a verified email is allowed
+    through, and a *second* account is created for it, which then collides with
+    the app's unique email constraint. So the rule is enforced here, at the one
+    function every provider funnels through. Returning `SignInUpNotAllowed`
+    surfaces as the front end's existing-account message.
+
+    A returning social user is allowed: their own login method matches the
+    third-party identity, and there is no other account to conflict with.
+    """
+    original_sign_in_up = original.sign_in_up
+
+    async def sign_in_up(
+        third_party_id,
+        third_party_user_id,
+        email,
+        is_verified,
+        oauth_tokens,
+        raw_user_info_from_provider,
+        session,
+        should_try_linking_with_session_user,
+        tenant_id,
+        user_context,
+    ):
+        existing = await list_users_by_account_info(
+            tenant_id,
+            AccountInfoInput(email=email),
+            do_union_of_account_info=True,
+            user_context=user_context,
+        )
+        same_identity = any(
+            login.recipe_id == "thirdparty"
+            and login.third_party is not None
+            and login.third_party.id == third_party_id
+            and login.third_party.user_id == third_party_user_id
+            for user in existing
+            for login in user.login_methods
+        )
+        if existing and not same_identity:
+            return SignInUpNotAllowed(
+                reason=(
+                    "This email already has an account. Sign in with the method "
+                    "you originally used."
+                )
+            )
+
+        return await original_sign_in_up(
+            third_party_id=third_party_id,
+            third_party_user_id=third_party_user_id,
+            email=email,
+            is_verified=is_verified,
+            oauth_tokens=oauth_tokens,
+            raw_user_info_from_provider=raw_user_info_from_provider,
+            session=session,
+            should_try_linking_with_session_user=should_try_linking_with_session_user,
+            tenant_id=tenant_id,
+            user_context=user_context,
+        )
+
+    original.sign_in_up = sign_in_up
+    return original
+
+
 def init_supertokens(settings: Settings) -> None:
     init(
         app_info=_app_info(settings),
@@ -270,7 +345,12 @@ def init_supertokens(settings: Settings) -> None:
                 override=EmailPasswordOverrideConfig(functions=_revoke_sessions_on_password_change),
             ),
             thirdparty.init(
-                sign_in_and_up_feature=thirdparty.SignInAndUpFeature(providers=_providers(settings))
+                sign_in_and_up_feature=thirdparty.SignInAndUpFeature(
+                    providers=_providers(settings)
+                ),
+                override=thirdparty.ThirdPartyOverrideConfig(
+                    functions=_refuse_sign_in_when_email_exists
+                ),
             ),
         ],
     )
