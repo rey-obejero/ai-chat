@@ -4,7 +4,13 @@
 - **Date:** 2026-10-03
 - **Deciders:** Rey Obejero
 - **Supersedes:** —
-- **Superseded by:** —
+- **Superseded by:** ADR-0034
+
+> **Superseded by [ADR-0034](0034-refuse-social-sign-in-on-existing-email.md).**
+> The policy is unchanged, but the SDK does not enforce it: a verified email
+> creates a second account. ADR-0034 enforces the refusal in code. The record
+> below is kept for history, including its incorrect claim that the default was
+> safe.
 
 ## TL;DR
 
