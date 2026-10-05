@@ -88,3 +88,14 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0032](0032-rate-limiting-covers-auth.md) | Rate limiting runs outside SuperTokens and covers the auth endpoints | Accepted | 2026-10-04 |
 | [0033](0033-social-e2e-local-oidc-provider.md) | Social sign-in end-to-end tests run against a local OIDC provider | Accepted | 2026-10-04 |
 | [0034](0034-refuse-social-sign-in-on-existing-email.md) | A social sign-in is refused when its email already has an account | Accepted | 2026-10-04 |
+| [0035](0035-guest-access-and-identity.md) | Guests can chat, and their conversations are claimed at sign-up | Proposed | 2026-10-06 |
+| [0036](0036-attachments-are-conversation-scoped-and-bounded.md) | Attachments are conversation-scoped, bounded, and screened | Accepted | 2026-10-06 |
+| [0037](0037-temporary-conversations-are-not-persisted.md) | A temporary conversation is not persisted until it is saved | Accepted | 2026-10-06 |
+| [0038](0038-password-strength-and-breach-screening.md) | Password strength is length, entropy, and breach screening | Accepted | 2026-10-06 |
+| [0039](0039-email-verification-is-a-soft-nudge.md) | Email verification is a soft nudge with a reduced allowance | Accepted | 2026-10-06 |
+| [0040](0040-bring-your-own-model-provider.md) | A user may bring their own compatible model provider | Accepted | 2026-10-06 |
+| [0041](0041-internationalization-covers-the-interface.md) | Internationalization covers the interface only | Accepted | 2026-10-06 |
+| [0042](0042-dark-mode-is-per-account.md) | Dark mode is per-account and extends the design contract | Accepted | 2026-10-06 |
+| [0043](0043-long-conversations-are-summarized-silently.md) | Long conversations are summarized silently | Accepted | 2026-10-06 |
+| [0044](0044-assistant-markdown-user-plain-text.md) | Assistant messages render as Markdown, user messages as plain text | Accepted | 2026-10-06 |
+| [0045](0045-display-name-derivation-and-filtering.md) | Display names default to the email local part and are filtered | Accepted | 2026-10-06 |
