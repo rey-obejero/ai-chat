@@ -1,10 +1,11 @@
 # Roadmap
 
-Living build tracker for `ai-chat`. Source of truth for stack and features:
-`~/documents/ai-chat-assistant.md`.
+Living build tracker for `ai-chat`. Requirements live in
+[`functional-requirements.md`](functional-requirements.md).
 
-Architectural decisions are recorded as ADRs in [`adrs/`](adrs/README.md); this
-file tracks build progress, not decision rationale.
+Architectural decisions are recorded as ADRs in
+[`architectural-decision-records/`](architectural-decision-records/README.md);
+this file tracks build progress, not decision rationale.
 
 ## Tooling debt
 
