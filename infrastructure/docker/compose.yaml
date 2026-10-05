@@ -1,11 +1,5 @@
 name: ai-chat
 
-# The whole stack runs here (ADR-0026). Caddy is the only service that
-# publishes a host port; everything else is reachable on the internal network
-# only. Do not add a `ports:` entry to another service: uvicorn trusts
-# X-Forwarded-For from any peer, so publishing the API would let a client
-# spoof its address and evade the rate limiter (ADR-0020).
-
 x-logging: &logging
   driver: json-file
   options:

@@ -77,7 +77,10 @@ tokens are noted under "Tailwind v4" and "Don't" below.
 - Use `<script setup lang="ts">` and type props/emits.
 - Talk to the API only through `src/lib/api.ts` (`/api/v1`, same-origin).
 - Guard protected routes in `app/router/index.ts` via the session store.
-- Keep auth state in Pinia, never in `localStorage`/`sessionStorage`.
+- Keep auth state in Pinia. Never put tokens or session data in
+  `localStorage`/`sessionStorage`; a non-secret value that must survive a
+  full-page navigation (the post-sign-in destination) may use `sessionStorage`,
+  scoped to the tab and cleared when read.
 
 ## Don't
 
