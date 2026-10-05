@@ -10,6 +10,15 @@ Sources of truth:
 - Work tracking: the issue tracker
 - UI design system: `DESIGN.md` (binding on all front-end work)
 
+## Pending
+
+- **File the work items as GitHub issues.** The FRD's Appendix A lists WI-1 …
+  WI-17; create them in the issue tracker and record the issue numbers back in
+  that table.
+- **Retire `documentation/roadmap.md`.** Migrate its remaining items (known
+  defects, tooling debt, the deferred-stack note, and the error-envelope
+  upgrade) to issues, then delete the file.
+
 ## Monorepo layout
 
 ```
