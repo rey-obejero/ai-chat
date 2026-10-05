@@ -1,12 +1,13 @@
 # AGENTS.md — AI Chat
 
-A ChatGPT-style chat bot with document retrieval (RAG), tool calling, and custom
-skills. Chat first — retrieval and tools are capabilities the assistant uses,
-not the product.
+A multi-user chat assistant with document retrieval (RAG), tool calling, and
+custom skills. Chat first — retrieval and tools are capabilities the assistant
+uses, not the product.
 
 Sources of truth:
-- Stack + features: `~/documents/ai-chat-assistant.md`
-- Build tracker / debt: `documentation/roadmap.md`
+- Requirements: `documentation/functional-requirements.md`
+- Stack decisions: `documentation/architectural-decision-records/`
+- Work tracking: the issue tracker
 - UI design system: `DESIGN.md` (binding on all front-end work)
 
 ## Monorepo layout
@@ -16,7 +17,7 @@ ai-chat/
 ├── back-end/     FastAPI service (uv, Python)
 ├── front-end/    Vue 3 + Vite SPA (pnpm)
 ├── e2e/          Playwright end-to-end tests (pnpm workspace package)
-├── documentation/  roadmap + design notes
+├── documentation/  requirements, ADRs, and design notes
 ├── infrastructure/docker/  deployment artifacts
 │   ├── Caddyfile     reverse proxy (same-origin /api → API, /* → SPA)
 │   └── compose.yaml  local dev dependencies (postgres+pgvector, supertokens)
