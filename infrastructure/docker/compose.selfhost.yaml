@@ -1,0 +1,159 @@
+name: ai-chat
+
+# Self-hosted production: the API runs from its image and Caddy serves the built
+# SPA and proxies /api to the API. Caddy is the only service that publishes a
+# host port (ADR-0046). Bring it up with `just self-host`.
+#
+# A real deployment sets SITE_ADDRESS to its domain (Caddy then obtains a
+# certificate automatically) and provides the application's own settings — LLM
+# key, OAuth credentials, a real SMTP host — through `back-end/.env`. Only the
+# values that differ inside the network are overridden here.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aichat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aichat}
+      POSTGRES_DB: ${POSTGRES_DB:-aichat}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
+  supertokens:
+    # Keep in sync with supertokens-python: SDK 0.31.x requires CDI 5.4,
+    # which core advertises from 11.4.4 onward.
+    image: registry.supertokens.io/supertokens/supertokens-postgresql:11.4.4
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRESQL_CONNECTION_URI: postgresql://${POSTGRES_USER:-aichat}:${POSTGRES_PASSWORD:-aichat}@postgres:5432/supertokens
+      SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:-dev-key-change-me}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3567/hello"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  redis:
+    # Rate-limit counters only; nothing here needs to survive a restart, so
+    # there is no volume (ADR-0020).
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
+  mailpit:
+    # Catches mail when the deployment has no external SMTP. A real deployment
+    # points SMTP_HOST elsewhere (see the api environment below); this service
+    # is then simply unused.
+    image: axllent/mailpit:v1.31.4@sha256:b68349e3a014b90c5610bfb26b2ae36f3892d7b8cf25ee140c6c71c98d2fcf48
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
+  migrate:
+    # One-shot: without this the API starts cleanly and then 500s on missing
+    # tables, which is a confusing failure. `api` waits for it to succeed.
+    build:
+      context: ../../back-end
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: ../../back-end/.env
+        required: false
+    environment: &api-env
+      # Only what differs inside the network. `environment` wins over
+      # `env_file`, so these override the host-run values deliberately.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aichat}:${POSTGRES_PASSWORD:-aichat}@postgres:5432/aichat
+      SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
+      SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:-dev-key-change-me}
+      # Caddy serves both the SPA and the API, so the origin is the public
+      # address of this stack. Set SITE_ADDRESS to the real domain in
+      # production; SuperTokens derives cookie scope and redirects from this.
+      API_BASE_URL: ${SITE_ADDRESS:-http://localhost}
+      FRONTEND_URL: ${SITE_ADDRESS:-http://localhost}
+      RATE_LIMIT_STORAGE_URI: async+redis://redis:6379/0
+      # Caught locally by Mailpit. Override with a real SMTP host in production.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: "${SMTP_PORT:-1025}"
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-AI Chat}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@localhost}
+    logging: *logging
+
+  api:
+    build:
+      context: ../../back-end
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      supertokens:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - path: ../../back-end/.env
+        required: false
+    environment: *api-env
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    logging: *logging
+
+  caddy:
+    # Built from the front-end image (a Caddy base with the SPA at /srv/web) and
+    # configured by ./Caddyfile to serve that build and proxy /api to the API.
+    build:
+      context: ../..
+      dockerfile: front-end/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      # The only published ports in the stack. 80 and 443 are what Caddy needs
+      # for a real domain; the local smoke test uses 80 alone.
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-http://localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy-data:
+  caddy-config:

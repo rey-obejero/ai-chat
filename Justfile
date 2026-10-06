@@ -4,6 +4,7 @@ default:
     @just --list
 
 COMPOSE_DEV := "docker compose -f infrastructure/docker/compose.dev.yaml"
+COMPOSE_SELFHOST := "docker compose -f infrastructure/docker/compose.selfhost.yaml"
 DEV_DEPS := "postgres supertokens redis mailpit"
 
 # Datastores only, plus migrations. Used by the native lane, and by CI and the
@@ -45,6 +46,18 @@ development-logs:
 # to apply a new revision to a stack that is already running.
 development-migrate:
     {{COMPOSE_DEV}} run --rm migrate
+
+# Self-hosted production: the built SPA behind Caddy and the API from its image,
+# on one origin. Caddy is the only published service. Set SITE_ADDRESS (and the
+# application's own settings in `back-end/.env`) for a real deployment.
+self-host:
+    {{COMPOSE_SELFHOST}} up --build
+
+self-host-stop:
+    {{COMPOSE_SELFHOST}} stop
+
+self-host-logs:
+    {{COMPOSE_SELFHOST}} logs -f
 
 back-end:
     cd back-end && uv run uvicorn ai_chat.main:app --reload --port 8000 --proxy-headers --forwarded-allow-ips "*"
