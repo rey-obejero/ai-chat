@@ -49,15 +49,10 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      # `up --wait` blocks until every service's own healthcheck passes, so the
+      # hand-rolled SuperTokens poll this replaces added nothing but a second
+      # definition of "ready".
       - run: docker compose -f infrastructure/docker/compose.yaml -f infrastructure/docker/compose.host-deps.yaml up -d --wait
-      - name: Wait for SuperTokens
-        run: |
-          for _ in $(seq 1 60); do
-            curl -fsS http://localhost:3567/hello >/dev/null && exit 0
-            sleep 2
-          done
-          docker compose -f infrastructure/docker/compose.yaml logs supertokens
-          exit 1
       - run: uv sync --frozen
         working-directory: back-end
       - run: uv run alembic upgrade head
@@ -68,6 +63,22 @@ jobs:
       # Playwright starts the mock provider, the API, and the SPA itself.
       - run: pnpm test
         working-directory: e2e
+      # Keep the evidence for a red run: the HTML report embeds traces and
+      # screenshots, and the service logs explain a startup failure.
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
+      - name: Dump service status and logs
+        if: failure()
+        run: |
+          docker compose -f infrastructure/docker/compose.yaml ps
+          docker compose -f infrastructure/docker/compose.yaml logs --no-color
 
   gitleaks:
     runs-on: ubuntu-latest

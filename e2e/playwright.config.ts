@@ -14,7 +14,12 @@ export default defineConfig({
   },
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  // In CI, keep the compact annotations GitHub renders and also write the HTML
+  // report, which embeds traces and screenshots. The report is uploaded as an
+  // artifact on failure, so a red run can be debugged without a re-run.
+  reporter: process.env.CI
+    ? [["github"], ["html", { open: "never" }]]
+    : "list",
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:5173",
     trace: "on-first-retry",
