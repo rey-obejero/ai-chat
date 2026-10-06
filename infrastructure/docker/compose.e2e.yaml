@@ -1,0 +1,117 @@
+name: ai-chat
+
+# End-to-end overlay on the self-hosted stack: the app from
+# compose.selfhost.yaml, plus the deterministic mock providers and a Playwright
+# runner, all on one network.
+#
+# It is meant to run as its own Compose project (the Justfile uses
+# `-p ai-chat-e2e`) and is torn down with `down -v`, so it starts from an empty
+# database and cannot touch a running development stack.
+#
+# The browser origin is `http://caddy`: the runner resolves the `caddy` service
+# on the compose network, so the app is single-origin with no host port, and no
+# development server is needed.
+
+services:
+  caddy:
+    # The built SPA behind Caddy is the app the suite drives. Wait until it
+    # answers before the runner starts. The site matches Host `caddy`, so the
+    # probe sends that header while connecting to loopback.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "--header", "Host: caddy", "http://127.0.0.1/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    environment:
+      API_BASE_URL: http://caddy
+      FRONTEND_URL: http://caddy
+      LLM_API_KEY: e2e-key
+      LLM_BASE_URL: http://mock-llm:4010/v1
+      LLM_MODEL: e2e/mock
+      # The suite signs in repeatedly and shares rate-limit buckets across
+      # workers; no e2e test asserts rate limiting (the back-end suite covers
+      # the 429 path), so it is off here.
+      RATE_LIMIT_ENABLED: "false"
+      # The gated stand-in identity provider (ADR-0029). Off everywhere else.
+      TEST_IDP_ENABLED: "true"
+      TEST_IDP_BASE_URL: http://idp.test:4011
+      TEST_IDP_CLIENT_ID: test-idp-client
+      TEST_IDP_CLIENT_SECRET: test-idp-secret
+
+  mock-llm:
+    # Deterministic OpenAI-compatible provider so chat specs never call a real
+    # model (ADR-0023). Node built-ins only, so no install is needed.
+    image: node:22-alpine
+    working_dir: /app
+    command: ["node", "e2e/support/mock-llm-server.mjs"]
+    volumes:
+      - ../../:/app:ro
+    environment:
+      MOCK_LLM_PORT: "4010"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4010/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mock-idp:
+    # A local OIDC provider for the social specs (ADR-0033). The app and the
+    # runner reach it as `idp.test`, which is one of the hosts the gated
+    # provider accepts, so the browser can follow the redirect to it.
+    image: node:22-alpine
+    working_dir: /app
+    command: ["node", "e2e/support/mock-idp-server.mjs"]
+    volumes:
+      - ../../:/app:ro
+    environment:
+      MOCK_IDP_PORT: "4011"
+      MOCK_IDP_ISSUER: http://idp.test:4011
+      MOCK_IDP_CLIENT_ID: test-idp-client
+      MOCK_IDP_CLIENT_SECRET: test-idp-secret
+    networks:
+      default:
+        aliases:
+          - idp.test
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4011/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  e2e:
+    # Playwright + Chromium, on the same network as the app and the mocks, so
+    # the suite needs nothing on the host but Docker.
+    build:
+      context: ../..
+      dockerfile: e2e/Dockerfile
+    working_dir: /app/e2e
+    profiles: ["test"]
+    depends_on:
+      caddy:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+      mock-llm:
+        condition: service_healthy
+      mock-idp:
+        condition: service_healthy
+    environment:
+      # Tell the config not to start its own servers: they are Compose services.
+      E2E_IN_CONTAINER: "1"
+      E2E_BASE_URL: http://caddy
+      # Resolved by the service alias above, from both the runner and the API.
+      E2E_IDP_BASE_URL: http://idp.test:4011
+      E2E_SUPERTOKENS_CORE_URL: http://supertokens:3567
+      E2E_SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:-dev-key-change-me}
+      # GitHub Actions sets CI; forward it so the reporter and retries match CI.
+      CI: ${CI:-}
+    # Root so the report bind mounts below are always writable. The image's
+    # non-root user need not match the host uid.
+    user: root
+    volumes:
+      # Written to the host so CI can upload them as artifacts and a local run
+      # can open the HTML report.
+      - ../../e2e/test-results:/app/e2e/test-results
+      - ../../e2e/playwright-report:/app/e2e/playwright-report

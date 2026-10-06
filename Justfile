@@ -5,6 +5,7 @@ default:
 
 COMPOSE_DEV := "docker compose -f infrastructure/docker/compose.dev.yaml"
 COMPOSE_SELFHOST := "docker compose -f infrastructure/docker/compose.selfhost.yaml"
+E2E_COMPOSE := "docker compose -p ai-chat-e2e -f infrastructure/docker/compose.selfhost.yaml -f infrastructure/docker/compose.e2e.yaml"
 DEV_DEPS := "postgres supertokens redis mailpit"
 
 # Datastores only, plus migrations. Used by the native lane, and by CI and the
@@ -71,8 +72,20 @@ test-back-end:
 test-front-end:
     cd front-end && pnpm test
 
+# Independent end-to-end run: build the self-hosted stack and a Playwright
+# runner, run the suite in containers against the deterministic mock providers,
+# then remove the whole project and its volumes. Needs only Docker, and cannot
+# touch a running development stack (its own project, its own empty database).
 test-e2e:
-    cd e2e && pnpm test
+    #!/usr/bin/env sh
+    set -eu
+    export HTTP_PORT=18080 HTTPS_PORT=18443 SITE_ADDRESS=http://caddy
+    mkdir -p e2e/test-results e2e/playwright-report
+    compose="{{E2E_COMPOSE}}"
+    $compose --profile test build
+    $compose up -d --wait
+    trap '$compose down -v --remove-orphans' EXIT
+    $compose --profile test run --rm e2e
 
 lint:
     cd back-end && uv run ruff check . && uv run ruff format --check .
