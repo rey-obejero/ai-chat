@@ -9,6 +9,9 @@ A web-based AI chat interface.
 - [Technologies](#technologies)
 - [System Topology](#system-topology)
   - [Development](#development)
+  - [Containerized Development](#containerized-development)
+  - [Self-Hosted](#self-hosted)
+  - [Infrastructure-as-a-Service](#infrastructure-as-a-service)
 - [Getting Started](#getting-started)
   - [OAuth redirect URIs](#oauth-redirect-uris)
 - [Features](#features)
@@ -29,54 +32,118 @@ A web-based AI chat interface.
 
 ## System Topology
 
-The application is a single origin: the browser only ever talks to Caddy, which
-routes `/api/*` to the API and everything else to the front end. Only Caddy
-publishes a host port; every other service is reachable on the internal network
-alone.
+The application is a single origin: the browser only ever talks to one address,
+which serves the SPA and answers `/api/*`. What provides that address differs per
+setup — Vite's dev proxy in development, Caddy when self-hosted — but the
+application does not know the difference.
 
 ### Development
 
-`just development` runs this from `infrastructure/docker/compose.yaml`, with the
-SPA served by the Vite dev server so edits appear without a rebuild.
+`just development` is the normal loop. It starts the datastores in Compose
+(PostgreSQL, SuperTokens, Redis, and Mailpit) and runs the API and the SPA on the
+host. The browser opens the Vite dev server, and Vite proxies `/api` to the API,
+so there is no reverse proxy and no cross-origin request.
 
 ```mermaid
 flowchart TB
   browser(["Browser"])
-  caddy["Caddy<br/>:80, the only published port"]
-  vite["Vite dev server<br/>:5173"]
+  vite["Vite dev server<br/>:5173, the only origin"]
   fastapi["FastAPI<br/>:8000"]
   supertokens["SuperTokens core<br/>:3567"]
-  postgres[("PostgreSQL<br/>:5432")]
+  postgres[("PostgreSQL<br/>:5433")]
   redis[("Redis<br/>:6379")]
+  mailpit["Mailpit<br/>:1025 SMTP, :8025 UI"]
   llm["Model provider<br/>openrouter.ai, outbound only"]
 
-  browser -->|"every request"| caddy
-  caddy -->|"/api/*"| fastapi
-  caddy -->|"everything else,<br/>including the hot-reload socket"| vite
+  browser -->|"every request"| vite
+  vite -->|"/api/*"| fastapi
   fastapi -->|"sessions and users"| supertokens
   fastapi -->|"conversations, messages, users"| postgres
   fastapi -->|"rate-limit counters"| redis
+  fastapi -->|"password-reset mail"| mailpit
   fastapi -->|"chat completions"| llm
 ```
 
-Postgres and Redis are drawn with their default in-container ports. Redis holds
-rate-limit counters only and has no volume, so nothing there survives a restart.
+Notice: the browser only ever loads `:5173`. The API's `:8000` and the datastore
+ports exist for the host processes; none of them is the browser's origin.
 
-**Loading a page.** The browser asks Caddy for a URL. Caddy sends anything under
-`/api/` to the API and everything else to the dev server, which returns the SPA
-shell and its modules. The SPA then calls `/api/...` on its own origin, so there
-is no cross-origin request and no CORS configuration to keep in step.
+**Loading a page.** The browser asks Vite for a URL. Vite returns the SPA shell
+and its modules, and proxies anything under `/api/` to the API. The SPA then
+calls `/api/...` on its own origin, so there is no CORS to keep in step.
 
-**Sending a message.** The SPA posts to `/api/v1/conversations/...` through
-Caddy. The API checks the session with SuperTokens, records the message in
-Postgres, and streams the reply from the model provider back through Caddy to
-the browser. The reply is streamed rather than buffered, which is why Caddy
-leaves proxied responses alone for that route.
+**Sending a message.** The SPA posts to `/api/v1/conversations/...` through Vite.
+The API checks the session with SuperTokens, records the message in Postgres, and
+streams the reply from the model provider back to the browser through Vite.
 
-Running the API and the SPA on the host instead (`just back-end` /
-`just front-end`) drops Caddy from the path: Vite serves the SPA on `:5173` and
-proxies `/api` to the API on `:8000` itself. The end-to-end suite uses that
-arrangement so it can supply its own model provider (ADR-0023).
+Redis holds rate-limit counters only and has no volume, so nothing there survives
+a restart. Mailpit catches development mail so no message leaves the machine
+(ADR-0030).
+
+### Containerized Development
+
+`just development-containerized` runs the same setup entirely in Compose, from
+`infrastructure/docker/compose.dev.yaml`. There is still no reverse proxy: Vite's
+container publishes `:5173` (the origin) and proxies `/api` to the `api` service.
+
+```mermaid
+flowchart TB
+  browser(["Browser"])
+  vite["Vite dev server<br/>container, :5173 published"]
+  fastapi["FastAPI<br/>:8000, internal"]
+  supertokens["SuperTokens core<br/>:3567, internal"]
+  postgres[("PostgreSQL<br/>:5432, internal")]
+  redis[("Redis<br/>:6379, internal")]
+  mailpit["Mailpit<br/>:1025 / :8025, internal"]
+  llm["Model provider<br/>outbound only"]
+
+  browser -->|"every request"| vite
+  vite -->|"/api/*, by service name"| fastapi
+  fastapi --> supertokens
+  fastapi --> postgres
+  fastapi --> redis
+  fastapi -->|"password-reset mail"| mailpit
+  fastapi -->|"chat completions"| llm
+```
+
+Notice: the browser path is identical to the native lane. Only the API and the
+datastores move inside the compose network.
+
+### Self-Hosted
+
+`just self-host` runs `infrastructure/docker/compose.selfhost.yaml`: the built SPA
+and the API's own image, with Caddy as the front door. Caddy serves the built
+files and proxies `/api` to the API, and it is the only service that publishes a
+host port. This is the production shape.
+
+```mermaid
+flowchart TB
+  browser(["Browser"])
+  caddy["Caddy<br/>:80 / :443, the only published ports"]
+  web["Built SPA<br/>/srv/web"]
+  fastapi["FastAPI<br/>:8000, internal"]
+  supertokens["SuperTokens core<br/>:3567, internal"]
+  postgres[("PostgreSQL<br/>:5432, internal")]
+  redis[("Redis<br/>:6379, internal")]
+  mailpit["Mailpit<br/>internal, optional"]
+  llm["Model provider<br/>outbound only"]
+
+  browser -->|"every request"| caddy
+  caddy -->|"static files"| web
+  caddy -->|"/api/*"| fastapi
+  fastapi --> supertokens
+  fastapi --> postgres
+  fastapi --> redis
+  fastapi -->|"password-reset mail"| mailpit
+  fastapi -->|"chat completions"| llm
+```
+
+Notice: no service but Caddy is reachable from outside. Set `SITE_ADDRESS` to a
+real domain and Caddy obtains a TLS certificate automatically; the default is a
+local plain-HTTP smoke test.
+
+### Infrastructure-as-a-Service
+
+_Not yet written._
 
 ## Getting Started
 
@@ -86,41 +153,46 @@ just install
 just development
 ```
 
-Then open <http://localhost>. That runs the whole stack in Compose — Postgres,
-SuperTokens, Redis, the API, the Vite dev server, and Caddy in front of both.
+Then open <http://localhost:5173>. This starts the datastores in Compose and runs
+the API and the SPA on the host; Vite serves the app and proxies `/api` to the
+API. To run everything in containers instead, use
+`just development-containerized` and open the same address.
 
 ```sh
-just development-logs     # follow output in another terminal
+just development-logs     # follow the datastore output
 just development-stop
 ```
 
 There is nothing to configure for local use and no certificate to trust: the
-development origin is plain HTTP (ADR-0025). The two template files are only
-needed to change a default:
+development origin is plain HTTP on a port (ADR-0046). The two template files are
+only needed to change a default:
 
 | Copy                                 | To                           | For                                                                                           |
 | ------------------------------------ | ---------------------------- | --------------------------------------------------------------------------------------------- |
 | `back-end/.env.example`              | `back-end/.env`              | the API's own settings — an LLM key for real replies, or OAuth credentials for social sign-in |
-| `infrastructure/docker/.env.example` | `infrastructure/docker/.env` | the Docker setup — database password, published ports                                         |
+| `infrastructure/docker/.env.example` | `infrastructure/docker/.env` | the Compose files — database password, published ports, and the self-hosted address            |
 
-The development stack loads `back-end/.env` too, so a credential added there is
-picked up whether the API runs in the container or on the host. The Docker one
-is optional: every value in it has a working default.
+The containerized development stack loads `back-end/.env` too, so a credential
+added there is picked up whether the API runs in the container or on the host.
+The Docker one is optional: every value in it has a working default.
 
 `just dependencies` brings up just the datastores, and `just back-end` /
-`just front-end` run the API and SPA on the host — useful for debugging, and
-what the e2e suite uses so it can supply its own mock provider (ADR-0023).
+`just front-end` run the API and the SPA individually — useful for debugging. The
+end-to-end suite uses its own stack; run it with `just test-e2e`.
 
 ### OAuth redirect URIs
 
 Social sign-in is configured per provider. Register the **SPA callback route**
-with each provider — not `/api/auth/...`:
+with each provider — not `/api/auth/...`. Because the browser origin is the Vite
+port in development and the Caddy address when self-hosted, register one per
+origin:
 
 ```
-http://localhost/authentication/callback
+http://localhost:5173/authentication/callback    # development
+https://chat.example.com/authentication/callback # self-hosted (your domain)
 ```
 
-The same URI serves every provider; providers distinguish by their own client
+The same path serves every provider; providers distinguish by their own client
 credentials, not by the path. It is the SPA route because the web SDK sends its
 `frontendRedirectURI` as the provider's redirect URI, and the app does not pass
 `redirectURIOnProviderDashboard` to override that. The provider sends the browser

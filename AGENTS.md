@@ -28,8 +28,9 @@ ai-chat/
 ├── e2e/          Playwright end-to-end tests (pnpm workspace package)
 ├── documentation/  requirements, ADRs, and design notes
 ├── infrastructure/docker/  compose files and deployment artifacts
-│   ├── Caddyfile         self-host front door (/api → API, /* → built SPA)
-│   └── compose.dev.yaml  containerized development (Vite, no proxy)
+│   ├── Caddyfile              self-host front door (/api → API, /* → built SPA)
+│   ├── compose.dev.yaml       containerized development (Vite, no proxy)
+│   └── compose.selfhost.yaml  self-hosted production (built SPA behind Caddy)
 ├── Justfile      task runner
 ```
 
@@ -69,6 +70,8 @@ just development-containerized  # the whole stack in Compose, no proxy
 just development-stop
 just development-logs
 just development-migrate        # apply pending migrations to a running stack
+just self-host                  # self-hosted production stack (Caddy, built SPA)
+just self-host-stop
 just dependencies               # datastores only (postgres, supertokens, redis, mailpit)
 just dependencies-stop
 just back-end                   # FastAPI on :8000 (reload) — for debugging
