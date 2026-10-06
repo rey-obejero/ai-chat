@@ -13,9 +13,10 @@ export default defineConfig({
     },
   },
   server: {
-    // 0.0.0.0 so the container is reachable from Caddy. No HMR configuration
-    // is needed: with no `hmr.host` or `clientPort`, Vite derives the socket
-    // origin from the client script's URL, which is the page's own origin.
+    // 0.0.0.0 so the container's dev server is reachable from the host. No HMR
+    // configuration is needed: with no `hmr.host` or `clientPort`, Vite derives
+    // the socket origin from the client script's URL, which is the page's own
+    // origin.
     host: '0.0.0.0',
     port: 5173,
     fs: {
@@ -34,7 +35,10 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // `localhost:8000` when Vite runs on the host (the native lane). The
+        // containerized lane sets this to `http://api:8000`, because inside the
+        // front-end container `localhost` is the container, not the API.
+        target: process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8000',
         changeOrigin: false,
       },
     },

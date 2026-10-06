@@ -1,10 +1,18 @@
 # ADR-0026: Compose runs the whole stack, Caddy included
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0046
 - **Date:** 2026-10-03
 - **Deciders:** Rey Obejero
 - **Supersedes:** ADR-0017
-- **Superseded by:** —
+- **Superseded by:** ADR-0046
+
+> **Superseded by [ADR-0046](0046-vite-proxy-in-development.md).** Compose no
+> longer runs Caddy in development, and the `full` profile no longer selects a
+> setup. `compose.dev.yaml` runs the containerized development stack without a
+> proxy; `compose.selfhost.yaml` runs the built SPA behind Caddy. The one-shot
+> `migrate` service, the healthchecks, and the "secrets stay out of the build
+> context" rule remain in force.
+
 
 ## TL;DR
 

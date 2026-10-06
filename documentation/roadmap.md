@@ -64,10 +64,10 @@ automatic TLS, and the deploy runbook.
 
 ## Deferred: containerized stack
 
-SeaweedFS (document storage) stays out of `infrastructure/docker/compose.yaml`
-until the documents slice lands. The `api` container and Caddy are now present:
-`just development` runs the whole stack behind Caddy at `http://localhost`
-(ADR-0026). Add SeaweedFS when the feature does.
+SeaweedFS (document storage) stays out of the compose files under
+`infrastructure/docker/` until the documents slice lands. The self-hosted
+compose file is the production-shaped stack (ADR-0046); add SeaweedFS there when
+the feature does.
 
 ## Error envelope — future upgrade
 

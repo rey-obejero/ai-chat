@@ -1,10 +1,17 @@
 # ADR-0025: Caddy fronts development, on plain `http://localhost`
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0046
 - **Date:** 2026-10-03
 - **Deciders:** Rey Obejero
 - **Supersedes:** —
-- **Superseded by:** —
+- **Superseded by:** ADR-0046
+
+> **Superseded by [ADR-0046](0046-vite-proxy-in-development.md).** Development no
+> longer runs Caddy. Vite's dev proxy supplies the single origin, and Caddy is
+> exercised by the self-hosted setup that the end-to-end suite runs. The rest of
+> this record — the `http://localhost` origin, no TLS, no certificate tooling,
+> and the redirect-URI consequences — still describes the local setup.
+
 
 ## TL;DR
 
