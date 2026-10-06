@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "AI Chat"
-    api_base_url: str = "http://localhost:8000"
+    # Both are the browser origin, which is what makes the session cookie
+    # same-site. The native lane serves the SPA on the Vite port and proxies
+    # /api to the API, so the API's own port is not the origin (ADR-0046).
+    api_base_url: str = "http://localhost:5173"
     frontend_url: str = "http://localhost:5173"
 
     database_url: str = "postgresql+asyncpg://aichat:aichat@localhost:5433/aichat"

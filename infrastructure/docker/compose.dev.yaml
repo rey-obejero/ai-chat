@@ -1,5 +1,15 @@
 name: ai-chat
 
+# Containerized development: the whole stack in Compose, with no reverse proxy.
+# The browser talks to the published Vite port and Vite proxies /api to the API,
+# so the application stays single-origin without Caddy (ADR-0046).
+#
+# `just dependencies` starts only the datastores named below and runs the API
+# and SPA on the host; `just development-containerized` starts all of it. The
+# datastore ports are published here because a host-run API needs to reach them
+# — that is a development concern, so it lives in the development file rather
+# than in an overlay.
+
 x-logging: &logging
   driver: json-file
   options:
@@ -14,6 +24,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-aichat}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aichat}
       POSTGRES_DB: ${POSTGRES_DB:-aichat}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -35,6 +47,8 @@ services:
     environment:
       POSTGRESQL_CONNECTION_URI: postgresql://${POSTGRES_USER:-aichat}:${POSTGRES_PASSWORD:-aichat}@postgres:5432/supertokens
       SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:-dev-key-change-me}
+    ports:
+      - "${SUPERTOKENS_PORT:-3567}:3567"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3567/hello"]
       interval: 5s
@@ -44,9 +58,12 @@ services:
 
   redis:
     # Rate-limit counters only; nothing here needs to survive a restart, so
-    # there is no volume (ADR-0020).
+    # there is no volume (ADR-0020). Published so a host-run API that opts into
+    # Redis-backed limiting can reach it.
     image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
     restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -77,7 +94,6 @@ services:
     build:
       context: ../../back-end
     command: ["alembic", "upgrade", "head"]
-    profiles: ["full"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -94,10 +110,11 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aichat}:${POSTGRES_PASSWORD:-aichat}@postgres:5432/aichat
       SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
       SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:-dev-key-change-me}
-      # Both must be loopback (browser-side origin), not the internal service
-      # name — SuperTokens derives cookie scope and redirects from these.
-      API_BASE_URL: http://localhost
-      FRONTEND_URL: http://localhost
+      # Both must be the browser origin (the published Vite port), not the API's
+      # own port — SuperTokens derives cookie scope and redirects from these,
+      # and they must match or the session cookie becomes cross-site.
+      API_BASE_URL: ${DEV_ORIGIN:-http://localhost:5173}
+      FRONTEND_URL: ${DEV_ORIGIN:-http://localhost:5173}
       RATE_LIMIT_STORAGE_URI: async+redis://redis:6379/0
       # Mailpit, reachable by service name inside the network; the host-run API
       # uses `localhost` instead, which is why this is set per environment.
@@ -111,7 +128,6 @@ services:
     build:
       context: ../../back-end
     restart: unless-stopped
-    profiles: ["full"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -153,7 +169,6 @@ services:
     image: node:22-alpine
     working_dir: /app/front-end
     restart: unless-stopped
-    profiles: ["full"]
     # Install from the workspace root, not from front-end/: the
     # onlyBuiltDependencies allowlist that permits esbuild's postinstall lives
     # in the root package.json, and pnpm only reads it there.
@@ -166,6 +181,10 @@ services:
         pnpm install --frozen-lockfile &&
         cd front-end &&
         pnpm dev --host 0.0.0.0 --port 5173
+    ports:
+      # The browser origin for containerized development. Vite proxies /api to
+      # the `api` service, so there is still only one origin.
+      - "${DEV_PORT:-5173}:5173"
     volumes:
       - ../../:/app
       # Every node_modules the install touches must be a volume, or the
@@ -180,27 +199,13 @@ services:
       CI: "true"
       # HMR needs no configuration: with no `hmr.host` or `clientPort`, Vite
       # derives the socket origin from the client script's own URL, which is
-      # the page origin. Caddy forwards the upgrade to this service.
+      # the page origin.
       CHOKIDAR_USEPOLLING: "false"
+      # Vite runs inside this container, so its proxy target is the API service
+      # name rather than `localhost` — which would be this container.
+      VITE_API_PROXY_TARGET: http://api:8000
     depends_on:
       - api
-    logging: *logging
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    profiles: ["full"]
-    depends_on:
-      api:
-        condition: service_healthy
-    ports:
-      - "80:80"
-    environment:
-      SPA_UPSTREAM: front-end:5173
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
     logging: *logging
 
 volumes:
@@ -208,5 +213,3 @@ volumes:
   workspace-modules:
   front-end-modules:
   e2e-modules:
-  caddy-data:
-  caddy-config:

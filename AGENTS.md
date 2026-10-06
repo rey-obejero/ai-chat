@@ -27,9 +27,9 @@ ai-chat/
 ├── front-end/    Vue 3 + Vite SPA (pnpm)
 ├── e2e/          Playwright end-to-end tests (pnpm workspace package)
 ├── documentation/  requirements, ADRs, and design notes
-├── infrastructure/docker/  deployment artifacts
-│   ├── Caddyfile     reverse proxy (same-origin /api → API, /* → SPA)
-│   └── compose.yaml  local dev dependencies (postgres+pgvector, supertokens)
+├── infrastructure/docker/  compose files and deployment artifacts
+│   ├── Caddyfile         self-host front door (/api → API, /* → built SPA)
+│   └── compose.dev.yaml  containerized development (Vite, no proxy)
 ├── Justfile      task runner
 ```
 
@@ -63,24 +63,27 @@ ai-chat/
 Prerequisites: `uv`, `pnpm` 10.15.0, `docker`, `just`.
 
 ```sh
-just install            # uv sync + pnpm install
-just development        # whole stack behind Caddy at http://localhost
+just install                    # uv sync + pnpm install
+just development                # native: datastores in Compose, API + SPA on the host
+just development-containerized  # the whole stack in Compose, no proxy
 just development-stop
 just development-logs
-just development-migrate # apply pending migrations to a running stack
-just dependencies       # datastores only (postgres, supertokens, redis)
+just development-migrate        # apply pending migrations to a running stack
+just dependencies               # datastores only (postgres, supertokens, redis, mailpit)
 just dependencies-stop
-just back-end           # FastAPI on :8000 (reload) — for e2e and debugging
-just front-end          # Vite dev server on :5173
-just test-back-end      # back-end pytest
-just test-front-end     # front-end vitest
-just test-e2e           # Playwright (root e2e/)
-just lint               # ruff + eslint + prettier
+just back-end                   # FastAPI on :8000 (reload) — for debugging
+just front-end                  # Vite dev server on :5173
+just test-back-end              # back-end pytest
+just test-front-end             # front-end vitest
+just test-e2e                   # Playwright (root e2e/)
+just lint                       # ruff + eslint + prettier
 ```
 
-`just development` is the normal workflow: the whole stack runs in Compose
-behind Caddy, so development exercises the production routing (ADR-0026). There
-is no TLS in development — the origin is plain `http://localhost` (ADR-0025).
+`just development` is the normal workflow: the datastores run in Compose and the
+API and SPA run natively, so reload is instant. The browser origin is the Vite
+port (`http://localhost:5173`), and Vite proxies `/api` to the API, so the app is
+single-origin without a reverse proxy (ADR-0046). `just development-containerized`
+runs the whole stack in Compose instead.
 
 `just back-end` and `just front-end` remain for debugging. `just test-e2e`
 starts its own SPA, API, and mock model provider, so stop any running dev servers

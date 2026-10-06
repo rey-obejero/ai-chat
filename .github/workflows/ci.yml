@@ -51,8 +51,9 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       # `up --wait` blocks until every service's own healthcheck passes, so the
       # hand-rolled SuperTokens poll this replaces added nothing but a second
-      # definition of "ready".
-      - run: docker compose -f infrastructure/docker/compose.yaml -f infrastructure/docker/compose.host-deps.yaml up -d --wait
+      # definition of "ready". Only the datastores start: the e2e suite runs the
+      # API and SPA on the host, against the ports the dev file publishes.
+      - run: docker compose -f infrastructure/docker/compose.dev.yaml up -d --wait postgres supertokens redis mailpit
       - run: uv sync --frozen
         working-directory: back-end
       - run: uv run alembic upgrade head
@@ -77,8 +78,8 @@ jobs:
       - name: Dump service status and logs
         if: failure()
         run: |
-          docker compose -f infrastructure/docker/compose.yaml ps
-          docker compose -f infrastructure/docker/compose.yaml logs --no-color
+          docker compose -f infrastructure/docker/compose.dev.yaml ps
+          docker compose -f infrastructure/docker/compose.dev.yaml logs --no-color
 
   gitleaks:
     runs-on: ubuntu-latest

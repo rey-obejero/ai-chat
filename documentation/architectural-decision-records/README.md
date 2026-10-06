@@ -78,8 +78,8 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0022](0022-streaming-endpoint-owns-history.md) | The streaming endpoint owns conversation history | Accepted | 2026-09-22 |
 | [0023](0023-e2e-mock-provider.md) | Chat end-to-end tests run against a mock provider | Accepted | 2026-09-22 |
 | [0024](0024-durable-token-quota.md) | The token quota is a Postgres ledger with a calendar period | Accepted | 2026-09-22 |
-| [0025](0025-caddy-in-development.md) | Caddy fronts development, on plain `http://localhost` | Accepted | 2026-10-03 |
-| [0026](0026-compose-runs-the-whole-stack.md) | Compose runs the whole stack, Caddy included | Accepted | 2026-10-03 |
+| [0025](0025-caddy-in-development.md) | Caddy fronts development, on plain `http://localhost` | Superseded by [0046](0046-vite-proxy-in-development.md) | 2026-10-03 |
+| [0026](0026-compose-runs-the-whole-stack.md) | Compose runs the whole stack, Caddy included | Superseded by [0046](0046-vite-proxy-in-development.md) | 2026-10-03 |
 | [0027](0027-public-url-namespaces.md) | `/authentication` and `/application` partition the public URL space | Accepted | 2026-10-03 |
 | [0028](0028-no-social-account-linking.md) | Social sign-in never merges into an existing account | Accepted | 2026-10-03 |
 | [0029](0029-gated-test-identity-provider.md) | The application carries a gated stand-in identity provider for tests | Accepted | 2026-10-04 |
@@ -99,3 +99,4 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0043](0043-long-conversations-are-summarized-silently.md) | Long conversations are summarized silently | Accepted | 2026-10-06 |
 | [0044](0044-assistant-markdown-user-plain-text.md) | Assistant messages render as Markdown, user messages as plain text | Accepted | 2026-10-06 |
 | [0045](0045-display-name-derivation-and-filtering.md) | Display names default to the email local part and are filtered | Accepted | 2026-10-06 |
+| [0046](0046-vite-proxy-in-development.md) | Vite's proxy fronts development; Caddy is the self-host front door | Accepted | 2026-10-06 |
