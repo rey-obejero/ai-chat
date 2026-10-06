@@ -78,7 +78,7 @@ just back-end                   # FastAPI on :8000 (reload) — for debugging
 just front-end                  # Vite dev server on :5173
 just test-back-end              # back-end pytest
 just test-front-end             # front-end vitest
-just test-e2e                   # Playwright (root e2e/)
+just test-e2e                   # containerized Playwright run (own stack, Docker only)
 just lint                       # ruff + eslint + prettier
 ```
 
@@ -88,10 +88,12 @@ port (`http://localhost:5173`), and Vite proxies `/api` to the API, so the app i
 single-origin without a reverse proxy (ADR-0046). `just development-containerized`
 runs the whole stack in Compose instead.
 
-`just back-end` and `just front-end` remain for debugging. `just test-e2e`
-starts its own SPA, API, and mock model provider, so stop any running dev servers
-first or Playwright will reuse them and the chat specs will fail to reach the
-mock (ADR-0023).
+`just back-end` and `just front-end` remain for debugging.
+
+**Do not run the end-to-end tests any other way.** `just test-e2e` builds and
+starts the whole stack in its own Compose project, with its own empty database,
+and removes it afterward, so it needs no running development server and cannot
+touch development data. Never leave a development server running for it.
 
 ## Conventions
 

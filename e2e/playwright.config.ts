@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// When the suite runs in its own container (compose.e2e.yaml), the app, the
+// mock providers, and SuperTokens are Compose services on the same network, so
+// Playwright must not start its own. On the host it starts everything itself.
+const inContainer = process.env.E2E_IN_CONTAINER === "1";
+
 export default defineConfig({
   testDir: ".",
   fullyParallel: true,
@@ -25,7 +30,11 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: [
+  // In the container the app and the mocks are Compose services, so there is
+  // nothing for Playwright to start; baseURL comes from E2E_BASE_URL.
+  webServer: inContainer
+    ? undefined
+    : [
     {
       // Deterministic provider so the chat specs never call a real model.
       command: "node support/mock-llm-server.mjs",

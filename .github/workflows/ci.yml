@@ -40,30 +40,23 @@ jobs:
     env:
       # The core container requires its API key; the SDK default is empty.
       SUPERTOKENS_API_KEY: dev-key-change-me
+      # The suite runs entirely in Compose. `SITE_ADDRESS` is the app's origin on
+      # the compose network; the host ports are published but unused by the
+      # suite (the runner reaches Caddy by service name).
+      SITE_ADDRESS: http://caddy
+      HTTP_PORT: "18080"
+      HTTPS_PORT: "18443"
+      COMPOSE_FILES: "-f infrastructure/docker/compose.selfhost.yaml -f infrastructure/docker/compose.e2e.yaml"
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      # `up --wait` blocks until every service's own healthcheck passes, so the
-      # hand-rolled SuperTokens poll this replaces added nothing but a second
-      # definition of "ready". Only the datastores start: the e2e suite runs the
-      # API and SPA on the host, against the ports the dev file publishes.
-      - run: docker compose -f infrastructure/docker/compose.dev.yaml up -d --wait postgres supertokens redis mailpit
-      - run: uv sync --frozen
-        working-directory: back-end
-      - run: uv run alembic upgrade head
-        working-directory: back-end
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-        working-directory: e2e
-      # Playwright starts the mock provider, the API, and the SPA itself.
-      - run: pnpm test
-        working-directory: e2e
+      - name: Build the stack and the Playwright runner
+        run: docker compose -p ai-chat-e2e $COMPOSE_FILES --profile test build
+      - name: Start the stack
+        run: docker compose -p ai-chat-e2e $COMPOSE_FILES up -d --wait
+      - name: Run the end-to-end suite
+        run: |
+          mkdir -p e2e/test-results e2e/playwright-report
+          docker compose -p ai-chat-e2e $COMPOSE_FILES --profile test run --rm e2e
       # Keep the evidence for a red run: the HTML report embeds traces and
       # screenshots, and the service logs explain a startup failure.
       - name: Upload the Playwright report
@@ -78,8 +71,11 @@ jobs:
       - name: Dump service status and logs
         if: failure()
         run: |
-          docker compose -f infrastructure/docker/compose.dev.yaml ps
-          docker compose -f infrastructure/docker/compose.dev.yaml logs --no-color
+          docker compose -p ai-chat-e2e $COMPOSE_FILES ps
+          docker compose -p ai-chat-e2e $COMPOSE_FILES logs --no-color
+      - name: Tear down
+        if: always()
+        run: docker compose -p ai-chat-e2e $COMPOSE_FILES down -v --remove-orphans
 
   gitleaks:
     runs-on: ubuntu-latest

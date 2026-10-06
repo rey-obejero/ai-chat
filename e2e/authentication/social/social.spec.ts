@@ -8,7 +8,7 @@ import { seedUser } from "../support/test-user";
 // the control. `serial` keeps them ordered on one worker.
 test.describe.configure({ mode: "serial" });
 
-const IDP = "http://localhost:4011";
+const IDP = process.env.E2E_IDP_BASE_URL ?? "http://localhost:4011";
 
 async function configureIdp(body: Record<string, unknown>): Promise<void> {
   const response = await fetch(`${IDP}/_control`, {
