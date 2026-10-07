@@ -14,6 +14,7 @@ A web-based AI chat interface.
   - [Infrastructure-as-a-Service](#infrastructure-as-a-service)
 - [Getting Started](#getting-started)
   - [OAuth redirect URIs](#oauth-redirect-uris)
+- [Releasing](#releasing)
 - [Features](#features)
   - [Authentication](#authentication)
 
@@ -217,6 +218,14 @@ Three consequences worth knowing:
 
 Development and production entries coexist; Google permits up to 100 redirect
 URIs per client.
+
+## Releasing
+
+Releases are automated with [`release-please`](https://github.com/googleapis/release-please).
+Conventional commits merged to `main` update a **Release PR** that bumps the
+version and writes `CHANGELOG.md`; merging that PR tags the commit (`vX.Y.Z`) and
+publishes the GitHub Release. The full setup, including the optional
+`RELEASE_PLEASE_TOKEN` secret, is documented in [`AGENTS.md`](./AGENTS.md).
 
 ## Features
 

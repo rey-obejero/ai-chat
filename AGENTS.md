@@ -95,6 +95,22 @@ starts the whole stack in its own Compose project, with its own empty database,
 and removes it afterward, so it needs no running development server and cannot
 touch development data. Never leave a development server running for it.
 
+## Releasing
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please),
+driven by the Conventional Commits commitlint already enforces.
+
+- Pushing to `main` runs the `release-please` workflow, which keeps a **Release
+  PR** open that bumps the version in the root `package.json` and updates
+  `CHANGELOG.md`.
+- Merge that PR when you want to release. Merging tags the commit (`vX.Y.Z`) and
+  creates the GitHub Release. Nothing is deployed by it.
+- To force a version, put `Release-As: x.y.z` in a commit body.
+- While pre-1.0, `bump-minor-pre-major` keeps a breaking change as a minor bump.
+- The workflow uses `secrets.RELEASE_PLEASE_TOKEN` when set, otherwise
+  `GITHUB_TOKEN`. Without the PAT secret, the Release PR is opened but does not
+  trigger other workflows.
+
 ## Conventions
 
 - Conventional Commits (enforced by commitlint). Branches: `feature/`, `fix/`,
