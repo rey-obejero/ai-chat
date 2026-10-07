@@ -110,6 +110,9 @@ driven by the Conventional Commits commitlint already enforces.
 - The workflow uses `secrets.RELEASE_PLEASE_TOKEN` when set, otherwise
   `GITHUB_TOKEN`. Without the PAT secret, the Release PR is opened but does not
   trigger other workflows.
+- The `RELEASE_PLEASE_TOKEN` PAT **expires**; when it does, releases fail until
+  it is replaced. The durable alternative is a GitHub App installation token
+  (minted per run, no expiry) — revisit this if renewal becomes a chore.
 
 ## Conventions
 
