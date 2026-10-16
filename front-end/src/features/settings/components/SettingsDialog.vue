@@ -4,6 +4,7 @@ import { nextTick, watch } from 'vue'
 
 import { UsagePanel, useUsageStore } from '@/features/usage'
 import PersonalizationSection from './PersonalizationSection.vue'
+import ProfileSection from './ProfileSection.vue'
 import ProviderSection from './ProviderSection.vue'
 import { SECTION_IDS, type SettingsSection } from '../sections'
 
@@ -47,6 +48,11 @@ watch([visible, () => props.section], async ([open, section]) => {
       <section :id="SECTION_IDS.personalization" class="space-y-3">
         <h2 class="text-heading-sm font-semibold text-ink">Personalization</h2>
         <PersonalizationSection />
+      </section>
+
+      <section :id="SECTION_IDS.profile" class="space-y-3">
+        <h2 class="text-heading-sm font-semibold text-ink">Profile</h2>
+        <ProfileSection />
       </section>
 
       <section class="space-y-3">

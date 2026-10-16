@@ -1,12 +1,12 @@
 /**
  * The settings dialog's sections, named so a caller can ask for one to be
- * brought into view — the account menu's Personalization item does (locked
- * decision 8). Profile's name section arrives with WI-4, so it is not a target
- * yet.
+ * brought into view — the account menu's Personalization and Profile items do
+ * (locked decision 8).
  */
-export type SettingsSection = 'personalization'
+export type SettingsSection = 'personalization' | 'profile'
 
 /** The element id each section carries, which is how the dialog finds it. */
 export const SECTION_IDS: Record<SettingsSection, string> = {
   personalization: 'settings-personalization',
+  profile: 'settings-profile',
 }

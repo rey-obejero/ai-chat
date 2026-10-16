@@ -37,7 +37,7 @@ function mountProvider() {
 }
 
 describe('SettingsDialog', () => {
-  it('renders the Personalization, Usage and Provider sections, anchored', () => {
+  it('renders the Personalization, Profile, Usage and Provider sections, anchored', () => {
     const wrapper = mount(SettingsDialog, {
       props: { modelValue: true },
       global: {
@@ -47,25 +47,30 @@ describe('SettingsDialog', () => {
           UsagePanel: true,
           ProviderSection: true,
           PersonalizationSection: true,
+          ProfileSection: true,
         },
       },
     })
 
     expect(wrapper.text()).toContain('Personalization')
+    expect(wrapper.text()).toContain('Profile')
     expect(wrapper.text()).toContain('Usage')
     expect(wrapper.text()).toContain('Provider')
     expect(wrapper.find('personalization-section-stub').exists()).toBe(true)
+    expect(wrapper.find('profile-section-stub').exists()).toBe(true)
     expect(wrapper.find('usage-panel-stub').exists()).toBe(true)
     expect(wrapper.find('provider-section-stub').exists()).toBe(true)
-    // The account menu names this section, so it carries the id the dialog looks up.
+    // The account menu names these sections, so they carry the ids the dialog
+    // looks up.
     expect(wrapper.find('#settings-personalization').exists()).toBe(true)
+    expect(wrapper.find('#settings-profile').exists()).toBe(true)
   })
 
   it('brings the named section into view when it opens for one', async () => {
     scrollIntoView.mockClear()
     // Attached, because the dialog finds its section by id in the document.
     const wrapper = mount(SettingsDialog, {
-      props: { modelValue: false, section: 'personalization' },
+      props: { modelValue: false, section: 'profile' },
       attachTo: document.body,
       global: {
         plugins: [createPinia()],
@@ -74,6 +79,7 @@ describe('SettingsDialog', () => {
           UsagePanel: true,
           ProviderSection: true,
           PersonalizationSection: true,
+          ProfileSection: true,
         },
       },
     })

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import Session from 'supertokens-web-js/recipe/session'
 import { computed, ref } from 'vue'
 
-import { getMe, type User } from '../api'
+import { getMe, updateMe, type User } from '../api'
 
 export const useSessionStore = defineStore('session', () => {
   const user = ref<User | null>(null)
@@ -28,5 +28,27 @@ export const useSessionStore = defineStore('session', () => {
     user.value = null
   }
 
-  return { user, ready, isAuthenticated, refresh, signOut }
+  /**
+   * Save the account's display name (FR-7). The write answers the first-run
+   * prompt as well, so the prompt needs no second call to close; the user the
+   * API returns is what every reader of the session shows next.
+   */
+  async function saveDisplayName(name: string): Promise<void> {
+    user.value = await updateMe({ display_name: name })
+  }
+
+  /** Record that the first-run prompt was skipped, keeping the derived name. */
+  async function skipNamePrompt(): Promise<void> {
+    user.value = await updateMe({ name_prompt_seen: true })
+  }
+
+  return {
+    user,
+    ready,
+    isAuthenticated,
+    refresh,
+    signOut,
+    saveDisplayName,
+    skipNamePrompt,
+  }
 })
