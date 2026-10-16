@@ -1,7 +1,19 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    false,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ai_chat.shared.db import Base
@@ -9,15 +21,50 @@ from ai_chat.shared.db import Base
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
 
+# The column's width and the rename rule's limit are the same number.
+TITLE_MAX_LENGTH = 255
+
 
 class Conversation(Base):
     __tablename__ = "conversations"
+    # One index carries the list's sort key — pinned first, then most recently
+    # active — and a trigram index makes the `ILIKE '%term%'` search over the
+    # title a search rather than a scan (migration 0005).
+    __table_args__ = (
+        Index("ix_conversations_user_last_activity", "user_id", text("last_activity_at DESC")),
+        Index(
+            "ix_conversations_title_trgm",
+            "title",
+            postgresql_using="gin",
+            postgresql_ops={"title": "gin_trgm_ops"},
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[str] = mapped_column(
         String(255), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
-    title: Mapped[str] = mapped_column(String(255), default="New conversation")
+    title: Mapped[str] = mapped_column(String(TITLE_MAX_LENGTH), default="New conversation")
+    # The three presentation states (FR-17). Each changes only how the list
+    # shows a row, so each is a plain flag rather than a date or a status enum.
+    is_pinned: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
+    is_favourite: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
+    # Denormalized time of the last message, stamped by `touch_activity`. The
+    # list orders by it: `created_at` cannot answer "what did I answer last",
+    # which is what resuming a conversation must do (FR-11).
+    last_activity_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        nullable=False,
+    )
     # Set while a stream holds this conversation's one-generation gate; cleared
     # in the stream's `finally`. A set-but-stale value expires after
     # `stream_grace_seconds` so a crashed worker cannot wedge the conversation.
@@ -40,6 +87,14 @@ class Message(Base):
             "role",
             "client_id",
             name="uq_messages_conversation_role_client_id",
+        ),
+        # Search is a substring match over the transcript too, and it is the
+        # larger table; the trigram index keeps it from becoming a full scan.
+        Index(
+            "ix_messages_content_trgm",
+            "content",
+            postgresql_using="gin",
+            postgresql_ops={"content": "gin_trgm_ops"},
         ),
     )
 

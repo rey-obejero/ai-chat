@@ -2,16 +2,20 @@
 import { useChat } from '@ai-sdk/vue'
 import type { UIMessage } from 'ai'
 import Avatar from 'primevue/avatar'
+import ConfirmDialog from 'primevue/confirmdialog'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useConfirm } from 'primevue/useconfirm'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
+import IconSearch from '~icons/lucide/search'
 
 import RootLayout from '@/components/layouts/RootLayout.vue'
 import SidebarGroup from '@/components/layouts/SidebarGroup.vue'
 import { useSessionStore } from '@/features/auth'
 import { SettingsDialog } from '@/features/settings'
-import { listMessages } from '../api'
+import { listMessages, type Conversation } from '../api'
 import ConversationList from '../components/ConversationList.vue'
 import MessageComposer from '../components/MessageComposer.vue'
 import MessageList from '../components/MessageList.vue'
@@ -42,6 +46,9 @@ const settingsOpen = ref(false)
 const composer = ref<InstanceType<typeof MessageComposer> | null>(null)
 const scrollArea = ref<HTMLElement | null>(null)
 const hydrating = ref(false)
+const searchTerm = ref('')
+const confirm = useConfirm()
+let searchTimer: ReturnType<typeof setTimeout> | undefined
 
 const conversationId = computed(() => {
   const id = route.params.id
@@ -84,6 +91,20 @@ const activeId = computed({
   },
 })
 
+/**
+ * Pinned, then the main list, then Archived (locked decision 7). Recents is the
+ * sidebar's standing list and shows while empty; the other two earn a header
+ * only once they hold a row.
+ */
+const sections = computed(() => {
+  const groups = [
+    { title: 'Pinned', storageKey: 'pinned', conversations: conversations.pinned },
+    { title: 'Recents', storageKey: 'recents', conversations: conversations.recents },
+    { title: 'Archived', storageKey: 'archived', conversations: conversations.archived },
+  ]
+  return groups.filter((group) => group.title === 'Recents' || group.conversations.length > 0)
+})
+
 const initial = computed(() => (session.user?.email ?? '?').charAt(0).toUpperCase())
 
 const accountItems = computed<MenuItem[]>(() => [
@@ -104,6 +125,9 @@ watch(messages, () => void scrollToNewest(), { flush: 'post' })
 onMounted(() => {
   void conversations.load()
 })
+
+// A pending debounce must not outlive the view and write to a disposed store.
+onBeforeUnmount(() => clearTimeout(searchTimer))
 
 // One watcher covers both entry paths: selecting a conversation, and arriving
 // at a freshly created one with a message already queued. Hydration must
@@ -166,6 +190,54 @@ function toggleAccount(event: Event): void {
 async function newConversation(): Promise<void> {
   const created = await conversations.create()
   await router.push({ name: 'conversations', params: { id: created.id } })
+}
+
+/**
+ * The list is a server query, so a request per keystroke would be a request per
+ * keystroke; the timer collapses a burst into one. The event's own value is read
+ * rather than the model's, because `v-model`'s update order is not worth
+ * depending on.
+ */
+function onSearchInput(event: Event): void {
+  const term = (event.target as HTMLInputElement).value
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    void conversations.search(term)
+  }, 250)
+}
+
+/** Escape clears the term and restores the unfiltered list straight away. */
+function clearSearch(): void {
+  clearTimeout(searchTimer)
+  searchTerm.value = ''
+  void conversations.search('')
+}
+
+function onLoadMore(): void {
+  void conversations.loadMore()
+}
+
+/** The confirmation names the conversation, so the dialog needs the row, not its id. */
+function askDelete(conversation: Conversation): void {
+  confirm.require({
+    header: 'Delete conversation',
+    message: `Delete “${conversation.title}”? Its messages are deleted with it.`,
+    acceptLabel: 'Delete',
+    rejectLabel: 'Cancel',
+    accept: () => void deleteAndReturn(conversation),
+  })
+}
+
+async function deleteAndReturn(conversation: Conversation): Promise<void> {
+  const wasActive = conversation.id === conversationId.value
+  if (!(await conversations.remove(conversation.id))) {
+    return
+  }
+  // The transcript is gone, so its route is too: the deleted conversation is
+  // the empty state, not a 404.
+  if (wasActive) {
+    await router.push({ name: 'conversations' })
+  }
 }
 
 async function selectSuggestion(prompt: string): Promise<void> {
@@ -250,16 +322,75 @@ async function signOut(): Promise<void> {
   <RootLayout v-model:collapsed="collapsed" @new-conversation="newConversation">
     <template #title>{{ title }}</template>
 
+    <template #search="{ collapsed }">
+      <!-- The nav's Search row (DESIGN.md — Nav Item): a Nav Item at rest, the
+           Text Input it holds once focused. The collapsed rail drops it with
+           the groups: a 64px row cannot hold a field. -->
+      <div
+        v-if="!collapsed"
+        class="search-row flex items-center gap-2.5 rounded-lg border border-transparent px-2.5 py-2 transition-colors motion-reduce:transition-none hover:bg-line/40"
+      >
+        <IconSearch class="size-4 shrink-0 text-icon" stroke-width="2" />
+        <input
+          v-model="searchTerm"
+          type="text"
+          class="min-w-0 flex-1 bg-transparent text-body-sm text-ink placeholder:text-subtext"
+          placeholder="Search"
+          aria-label="Search conversations"
+          @input="onSearchInput"
+          @keydown.escape="clearSearch"
+        />
+      </div>
+    </template>
+
     <template #sidebar>
       <SidebarGroup title="Projects" storage-key="projects" />
-      <SidebarGroup title="Recents" storage-key="recents">
-        <ConversationList
-          v-model:active-id="activeId"
-          :conversations="conversations.conversations"
-          :loading="conversations.loading"
-          :error="conversations.error"
-        />
-      </SidebarGroup>
+
+      <p v-if="conversations.error" role="alert" class="px-2.5 py-2 text-caption text-subtext">
+        {{ conversations.error }}
+      </p>
+      <p
+        v-else-if="conversations.pending"
+        role="status"
+        class="px-2.5 py-2 text-caption text-subtext"
+      >
+        Loading…
+      </p>
+      <p
+        v-else-if="conversations.noMatches"
+        role="status"
+        class="px-2.5 py-2 text-caption text-subtext"
+      >
+        No matches
+      </p>
+
+      <template v-else>
+        <SidebarGroup
+          v-for="section in sections"
+          :key="section.storageKey"
+          :title="section.title"
+          :storage-key="section.storageKey"
+        >
+          <ConversationList
+            v-model:active-id="activeId"
+            :conversations="section.conversations"
+            @rename="conversations.rename"
+            @toggle-pin="conversations.togglePin"
+            @toggle-favourite="conversations.toggleFavourite"
+            @toggle-archive="conversations.toggleArchive"
+            @remove="askDelete"
+          />
+        </SidebarGroup>
+
+        <button
+          v-if="conversations.hasMore"
+          type="button"
+          class="mt-1 w-full cursor-pointer rounded-lg px-2.5 py-2 text-left text-body-sm text-subtext transition-colors hover:text-ink motion-reduce:transition-none"
+          @click="onLoadMore"
+        >
+          Load more
+        </button>
+      </template>
     </template>
 
     <template #account="{ collapsed }">
@@ -340,4 +471,26 @@ async function signOut(): Promise<void> {
   </RootLayout>
 
   <SettingsDialog v-model="settingsOpen" />
+  <ConfirmDialog />
 </template>
+
+<style scoped>
+/* At rest the row is a Nav Item; focused it becomes the Text Input it holds —
+   Paper White with a Line edge (DESIGN.md — Text Input). The 1px edge is in the
+   box already (transparent), so nothing shifts as it takes its colour. */
+.search-row:focus-within {
+  background-color: var(--color-paper-white);
+  border-color: var(--color-line);
+}
+
+/* The ring follows the row, not the field inside it: the row is the control.
+   `:has` keeps it to keyboard focus, as Interaction States requires. */
+.search-row:has(input:focus-visible) {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.search-row input:focus {
+  outline: none;
+}
+</style>

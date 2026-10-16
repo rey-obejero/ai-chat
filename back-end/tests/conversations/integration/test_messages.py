@@ -90,7 +90,7 @@ async def test_first_message_names_the_conversation(app, client, session_factory
     )
 
     conversations = await client.get("/api/v1/conversations")
-    assert conversations.json()[0]["title"] == "Explain vector search"
+    assert conversations.json()["items"][0]["title"] == "Explain vector search"
 
 
 async def test_provider_failure_is_reported_as_an_error_part(app, client, session_factory) -> None:

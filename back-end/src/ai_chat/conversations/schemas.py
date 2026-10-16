@@ -1,7 +1,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+
+from ai_chat.conversations.models import TITLE_MAX_LENGTH
 
 
 class ConversationRead(BaseModel):
@@ -9,7 +11,53 @@ class ConversationRead(BaseModel):
 
     id: uuid.UUID
     title: str
+    is_pinned: bool
+    is_favourite: bool
+    is_archived: bool
     created_at: datetime
+    last_activity_at: datetime
+
+
+class ConversationPage(BaseModel):
+    """One page of the conversation list (FR-11).
+
+    `next_cursor` is opaque and resumes the list after the last item; `None`
+    means this was the last page.
+    """
+
+    items: list[ConversationRead]
+    next_cursor: str | None
+
+
+class ConversationUpdate(BaseModel):
+    """A partial update: only the fields sent change (FR-11, FR-16, FR-17)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = None
+    is_pinned: bool | None = None
+    is_favourite: bool | None = None
+    is_archived: bool | None = None
+
+    @field_validator("title", "is_pinned", "is_favourite", "is_archived", mode="before")
+    @classmethod
+    def _reject_null(cls, value: object, info: ValidationInfo) -> object:
+        # A field is absent or it carries a value. An explicit `null` is a
+        # client bug, not a partial update, so it is rejected rather than
+        # silently treated as "leave it alone".
+        if value is None:
+            raise ValueError(f"{info.field_name} may not be null; omit it instead.")
+        return value
+
+    @field_validator("title")
+    @classmethod
+    def _clean_title(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("title must not be blank")
+        if len(cleaned) > TITLE_MAX_LENGTH:
+            raise ValueError(f"title must be at most {TITLE_MAX_LENGTH} characters")
+        return cleaned
 
 
 class MessageCreate(BaseModel):
