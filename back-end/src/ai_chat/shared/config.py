@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
 
+    # Password screening (ADR-0038, FR-2). Length is checked locally; `zxcvbn`
+    # scores entropy 0–4 and rejects below `password_min_score`; the breach check
+    # asks the HIBP range API for the password's hash prefix. The breach check
+    # is on by default and fails *open* when the service is unreachable, so a
+    # blocked sign-up is always the password's fault, never the network's.
+    password_min_score: int = 2
+    password_breach_check_enabled: bool = True
+    hibp_api_key: str = ""
+    hibp_timeout_seconds: float = 2.0
+
     # Transactional email over SMTP (ADR-0030). An empty `smtp_host` means mail
     # is unconfigured: the reset endpoint then fails loudly instead of silently
     # reporting success and sending nothing. Development catches mail in
@@ -79,8 +89,11 @@ class Settings(BaseSettings):
     #
     # Prefix to rate, for the request-rate limit. The longest matching prefix
     # wins, so a specific path can carry a tighter limit than the blanket
-    # prefix around it — the reset-token endpoint sends mail and is the one
-    # worth throttling hardest.
+    # prefix around it — the endpoints that send mail are the ones worth
+    # throttling hardest, because each allowed call costs a message. The
+    # verification resend is the tighter rule for the same reason as the reset
+    # token: without it, resends ride the 20/minute auth prefix and an account
+    # can be made to send twenty mails a minute.
     rate_limit_enabled: bool = True
     rate_limit_storage_uri: str = "async+memory://"
     rate_limit_rules: dict[str, str] = {
@@ -88,6 +101,7 @@ class Settings(BaseSettings):
         "/api/v1/media": "60/minute",
         "/api/auth": "20/minute",
         "/api/auth/user/password/reset": "3/minute",
+        "/api/auth/user/email/verify/token": "3/minute",
     }
     rate_limit_fail_open: bool = True
 
@@ -97,9 +111,13 @@ class Settings(BaseSettings):
     stream_grace_seconds: int = 120
 
     # Durable per-user token quota (ADR-0024), layered under the provider's
-    # spend cap and separate from the request-rate limit above.
+    # spend cap and separate from the request-rate limit above. An unverified
+    # account gets the reduced allowance (ADR-0039); unset means half of
+    # `token_quota_tokens`, so a deployment that changes the quota changes both
+    # and the reduction cannot be lost by forgetting the second value.
     token_quota_enabled: bool = True
     token_quota_tokens: int = 100_000
+    token_quota_unverified_tokens: int | None = None
     token_quota_period: str = "month"
 
     # Server-side image proxy (ADR-0051). Disabling it removes the route
