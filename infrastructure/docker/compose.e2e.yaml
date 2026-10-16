@@ -37,6 +37,10 @@ services:
       # workers; no e2e test asserts rate limiting (the back-end suite covers
       # the 429 path), so it is off here.
       RATE_LIMIT_ENABLED: "false"
+      # A sign-up must not depend on the breach service from CI (ADR-0038): the
+      # suite signs up repeatedly, and its fail-open behaviour has its own
+      # back-end tests.
+      PASSWORD_BREACH_CHECK_ENABLED: "false"
       # The gated stand-in identity provider (ADR-0029). Off everywhere else.
       TEST_IDP_ENABLED: "true"
       TEST_IDP_BASE_URL: http://idp.test:4011
