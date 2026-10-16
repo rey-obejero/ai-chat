@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   describeError,
   lastUserText,
+  messageClientId,
   messageText,
   toUIMessages,
 } from '@/features/conversations/messages'
@@ -47,6 +48,54 @@ describe('conversation message helpers', () => {
       { id: 'a', role: 'user', parts: [{ type: 'text', text: 'hi' }] },
       { id: 'b', role: 'assistant', parts: [{ type: 'text', text: 'hello' }] },
     ])
+  })
+
+  it('carries a row key into the metadata and leaves a keyless row alone', () => {
+    const history = [
+      {
+        id: 'a',
+        role: 'user' as const,
+        content: 'hi',
+        created_at: '2026-01-01T00:00:00Z',
+        client_id: 'key-1',
+      },
+      {
+        id: 'b',
+        role: 'assistant' as const,
+        content: 'hello',
+        created_at: '2026-01-01T00:00:01Z',
+        client_id: null,
+      },
+    ]
+
+    expect(toUIMessages(history)).toEqual([
+      {
+        id: 'a',
+        role: 'user',
+        parts: [{ type: 'text', text: 'hi' }],
+        metadata: { clientId: 'key-1' },
+      },
+      { id: 'b', role: 'assistant', parts: [{ type: 'text', text: 'hello' }] },
+    ])
+  })
+
+  it('reads a turn key back off the metadata, and nothing off a message without one', () => {
+    const [restored] = toUIMessages([
+      {
+        id: 'a',
+        role: 'user' as const,
+        content: 'hi',
+        created_at: '2026-01-01T00:00:00Z',
+        client_id: 'key-1',
+      },
+    ])
+    const [optimistic] = toUIMessages([
+      { id: 'b', role: 'user' as const, content: 'hi', created_at: '2026-01-01T00:00:00Z' },
+    ])
+
+    expect(messageClientId(restored)).toBe('key-1')
+    expect(messageClientId(optimistic)).toBeUndefined()
+    expect(messageClientId({ id: 'c', role: 'assistant', parts: [] })).toBeUndefined()
   })
 })
 

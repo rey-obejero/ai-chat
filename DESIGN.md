@@ -231,6 +231,15 @@ Both labels are a 10px caption in Subtext (#666666). The transcript is bottom-an
 
 An assistant turn's body is **Markdown Content**; a user turn's body stays literal text, with any fenced block shown as a bare monospace block on the bubble fill.
 
+### Message Actions
+**Role:** The action row beneath a conversation turn.
+
+A row of tertiary icon buttons, 4px apart, sitting under the turn: Copy and Quote on both roles, Edit on a user turn, Regenerate on an assistant turn. It is invisible at rest and revealed on hover or keyboard focus anywhere in the turn (`:hover` / `:focus-within`, never `group-*`, which is inert in this build), and it is always visible under `(pointer: coarse)`, where there is no hover to reveal it. The row keeps the turn's alignment, so a user turn's actions sit right and an assistant turn's sit left.
+
+The buttons follow Icon Button exactly — 32×32 circles with a 16px glyph, no padding, every one of them tooltipped. Each control's accessible name states its action ("Copy message", "Edit message"), never its glyph. Revealing the row must not move anything: the buttons occupy their space whether or not they are visible, and they stay keyboard-focusable at rest so focus can bring them into view.
+
+Copying writes the message's exact text and flips that control to a check mark for 1.5 seconds, the Code Block's pattern; the confirmation is also announced through a polite live region. Edit and Regenerate are silent — the transcript truncates to the affected turn and streams a replacement, with no confirmation dialog.
+
 ### Markdown Content
 **Role:** The rendered body of an assistant turn.
 

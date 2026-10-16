@@ -11,6 +11,8 @@ export interface Message {
   role: 'user' | 'assistant'
   content: string
   created_at: string
+  /** The key the write that created this turn carried (ADR-0050). Null on older rows. */
+  client_id?: string | null
 }
 
 export function listConversations(): Promise<Conversation[]> {
