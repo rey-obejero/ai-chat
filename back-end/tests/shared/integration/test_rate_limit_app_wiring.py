@@ -7,10 +7,16 @@ is invisible until it is under load.
 """
 
 import httpx
+from limits import parse
 
 from ai_chat.main import create_app
 from ai_chat.shared.config import Settings
 from ai_chat.shared.rate_limit import RateLimitMiddleware
+
+
+def _per_minute(rule: str) -> int:
+    """The rule's amount; every default rule is stated per minute."""
+    return parse(rule).amount
 
 
 class _SentinelMiddleware:
@@ -41,13 +47,17 @@ def test_the_limiter_is_added_after_supertokens(monkeypatch) -> None:
     assert classes.index(RateLimitMiddleware) < classes.index(_SentinelMiddleware)
 
 
-def test_default_rules_cover_auth_and_the_reset_endpoint() -> None:
+def test_default_rules_cover_auth_and_the_mail_endpoints() -> None:
     rules = Settings(_env_file=None).rate_limit_rules
 
     assert "/api/auth" in rules
     assert "/api/auth/user/password/reset" in rules
-    # The reset endpoint sends mail, so it is throttled harder than sign-in.
-    assert rules["/api/auth/user/password/reset"] != rules["/api/auth"]
+    assert "/api/auth/user/email/verify/token" in rules
+    # Both endpoints that send a message are throttled harder than sign-in, so
+    # neither a reset request nor a verification resend can ride the blanket
+    # auth prefix; the longest matching prefix is the only rule that counts.
+    assert _per_minute(rules["/api/auth/user/password/reset"]) < _per_minute(rules["/api/auth"])
+    assert _per_minute(rules["/api/auth/user/email/verify/token"]) < _per_minute(rules["/api/auth"])
 
 
 async def test_an_auth_endpoint_returns_429_with_retry_after() -> None:
