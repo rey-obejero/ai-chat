@@ -4,8 +4,8 @@
 |---|---|
 | **Owner** | rey-obejero |
 | **Status** | Draft |
-| **Version** | 1.1 |
-| **Date** | 2026-10-06 |
+| **Version** | 1.2 |
+| **Date** | 2026-10-16 |
 | **References** | the ADRs and `DESIGN.md` under `documentation/`; the issue tracker |
 
 ## 1. Introduction
@@ -362,7 +362,7 @@ each requirement without further interpretation.
   - Documents are private to the uploader.
   - No document is processed until it has been verified safe.
   - A failed upload leaves nothing behind.
-- **Source** — WI-13 · **Verification** — test
+- **Source** — WI-13a · **Verification** — test
 
 #### FR-29 Document Q&A with citations
 - **Statement** — When an answer draws on the user's documents, the system shall
@@ -371,7 +371,7 @@ each requirement without further interpretation.
 - **Acceptance criteria**
   - Every citation names a real source.
   - A citation only ever references a document the asker may access.
-- **Source** — WI-13 · **Verification** — test
+- **Source** — WI-13b · **Verification** — test
 
 #### FR-30 Hybrid search
 - **Statement** — Retrieval shall combine keyword and semantic matching.
@@ -379,7 +379,7 @@ each requirement without further interpretation.
 - **Acceptance criteria**
   - Retrieval returns documents the asker may access, and only those.
   - Both keyword and semantic matches can surface a relevant document.
-- **Source** — WI-13 · **Verification** — test
+- **Source** — WI-13b · **Verification** — test
 
 #### FR-31 Document management
 - **Statement** — The user shall see each document's ingest status and delete or
@@ -388,7 +388,7 @@ each requirement without further interpretation.
 - **Acceptance criteria**
   - Statuses reflect reality (processing, ready, failed).
   - Deleting a document removes it from future answers.
-- **Source** — WI-13 · **Verification** — test
+- **Source** — WI-13a · **Verification** — test
 
 ### 3.7 Agents & automation
 
@@ -400,7 +400,7 @@ each requirement without further interpretation.
   - A tool runs only with the user's permission and only on the user's data.
   - The result is reflected in the reply.
   - A failed tool degrades gracefully and never corrupts the reply.
-- **Source** — WI-14 · **Verification** — test
+- **Source** — WI-14a · **Verification** — test
 
 #### FR-33 Skill invocation
 - **Statement** — The user shall invoke a named skill, which applies its
@@ -409,7 +409,7 @@ each requirement without further interpretation.
 - **Acceptance criteria**
   - A skill runs only when chosen by the user or clearly disclosed.
   - A skill's instructions never override safety or privacy rules.
-- **Source** — WI-14 · **Verification** — test
+- **Source** — WI-14a · **Verification** — test
 
 #### FR-34 Web search
 - **Statement** — The assistant shall search the live web and use the results in
@@ -418,7 +418,7 @@ each requirement without further interpretation.
 - **Acceptance criteria**
   - Cited web sources are real and reachable.
   - The assistant never presents an invented link as a search result.
-- **Source** — WI-14 · **Verification** — test
+- **Source** — WI-14b · **Verification** — test
 
 #### FR-35 Document generation
 - **Statement** — The assistant shall produce a complete document and save it for
@@ -427,7 +427,7 @@ each requirement without further interpretation.
 - **Acceptance criteria**
   - The generated document belongs to the requesting user.
   - It is never overwritten by, or exposed to, another user.
-- **Source** — WI-14 · **Verification** — test
+- **Source** — WI-14b · **Verification** — test
 
 ### 3.8 Appearance & language
 
@@ -537,31 +537,37 @@ not specified here; they live in the issue tracker.
 - Whether the profanity filter is locale-aware for Chinese names (FR-7).
 - When the hidden summarization of long conversations triggers (FR-9/FR-10).
 
-## Appendix A — Work items
+## Appendix A — Requirements traceability matrix
 
-Each work item is filed as a GitHub issue; record its number in the last column
-once filed. A requirement's **Source** names its work item.
+The matrix maps each work item to its requirements and its GitHub issue. A
+requirement's **Source** names its stable work item ID.
 
 | WI | Work item | Requirements | Issue |
 |---|---|---|---|
-| WI-1 | guest-access | FR-6 | — |
-| WI-2 | account-sign-in | FR-1, FR-5 | — |
-| WI-3 | password-and-recovery | FR-2, FR-3, FR-4 | — |
-| WI-4 | display-name | FR-7 | — |
-| WI-5 | chat-streaming | FR-8, FR-9, FR-10 | — |
-| WI-6 | message-actions | FR-13, FR-14 | — |
-| WI-7 | conversation-history | FR-11, FR-15, FR-16, FR-17 | — |
-| WI-8 | temporary-conversations | FR-12 | — |
-| WI-9 | attachments-and-input | FR-18, FR-19, FR-20 | — |
-| WI-10 | commands-and-prompts | FR-21, FR-22 | — |
-| WI-11 | assistant-personalisation | FR-23, FR-24, FR-25, FR-26 | — |
-| WI-12 | markdown-rendering | FR-27 | — |
-| WI-13 | documents-and-retrieval | FR-28, FR-29, FR-30, FR-31 | — |
-| WI-14 | tools-and-skills | FR-32, FR-33, FR-34, FR-35 | — |
-| WI-15 | appearance-and-language | FR-36, FR-37 | — |
-| WI-16 | sharing | FR-38 | — |
-| WI-17 | settings-and-providers | FR-39, FR-40, FR-41 | — |
+| WI-1 | guest-access | FR-6 | #28 |
+| WI-2 | account-sign-in | FR-1, FR-5 | #29 |
+| WI-3 | password-and-recovery | FR-2, FR-3, FR-4 | #30 |
+| WI-4 | display-name | FR-7 | #31 |
+| WI-5 | chat-streaming | FR-8, FR-9, FR-10 | #32 |
+| WI-6 | message-actions | FR-13, FR-14 | #33 |
+| WI-7 | conversation-history | FR-11, FR-15, FR-16, FR-17 | #34 |
+| WI-8 | temporary-conversations | FR-12 | #35 |
+| WI-9 | attachments-and-input | FR-18, FR-19, FR-20 | #36 |
+| WI-10 | commands-and-prompts | FR-21, FR-22 | #37 |
+| WI-11 | assistant-personalisation | FR-23, FR-24, FR-25, FR-26 | #38 |
+| WI-12 | markdown-rendering | FR-27 | #39 |
+| WI-13a | documents-upload | FR-28, FR-31 | #40 |
+| WI-13b | documents-retrieval | FR-29, FR-30 | #41 |
+| WI-14a | tools-and-skills | FR-32, FR-33 | #42 |
+| WI-14b | web-search-and-generation | FR-34, FR-35 | #43 |
+| WI-15 | appearance-and-language | FR-36, FR-37 | #44 |
+| WI-16 | sharing | FR-38 | #45 |
+| WI-17 | settings-and-providers | FR-39, FR-40, FR-41 | #46 |
 
-Work item IDs are provisional; they are replaced by the issue number once filed.
-User stories are not kept in this document — they live in the issue tracker and
-inform each work item's scope.
+Three work items migrated from the retired roadmap carry no requirement of their
+own and are filed directly: R1 (#47, the two front-end styling defects), R2 (#48,
+dereferenceable RFC 9457 `type` URIs), R3 (#49, the public deploy).
+
+Work item IDs are stable: they are never replaced by an issue number. The issue
+number is recorded here and in the tracker. User stories are not kept in this
+document — they live in the issue tracker and inform each work item's scope.

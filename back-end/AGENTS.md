@@ -67,8 +67,7 @@ Compose and the API on the host (ADR-0046) — and `just test-back-end` /
 - Registered handlers convert to RFC 9457 `application/problem+json`:
   `type` (`about:blank`), `title`, `status`, `detail`, `instance`, plus the
   `code` extension. Validation errors add an `errors` extension.
-- The upgrade to per-class dereferenceable `type` URIs is tracked in
-  `../documentation/roadmap.md`.
+- The upgrade to per-class dereferenceable `type` URIs is tracked in issue #48.
 
 ## Do
 
