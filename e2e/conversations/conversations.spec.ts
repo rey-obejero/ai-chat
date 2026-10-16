@@ -296,3 +296,28 @@ test("switches the model and discloses the switch", async ({ signUpPage, page })
   // The switch is disclosed in the transcript, never silent.
   await expect(transcript.getByText(/Model set to/)).toBeVisible();
 });
+
+test("asks for a display name once and never again", async ({ signUpPage, page }) => {
+  // The sign-up helper answers the prompt for every other spec; this is the one
+  // that asserts it.
+  await signUpPage.goto();
+  await signUpPage.signUp(uniqueEmail(), VALID_PASSWORD, { answerNamePrompt: false });
+
+  const prompt = page.getByRole("dialog");
+  await expect(prompt).toBeVisible();
+
+  // Prefilled with the derived name — the email local part, never blank.
+  const field = prompt.getByRole("textbox");
+  await expect(field).not.toHaveValue("");
+
+  await field.fill("Ada Lovelace");
+  await prompt.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // Answered once: a reload does not ask again, and the account button now
+  // shows the name. The button's accessible name is "Account"; the display name
+  // is its visible label.
+  await page.reload();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Account" })).toContainText("Ada Lovelace");
+});
