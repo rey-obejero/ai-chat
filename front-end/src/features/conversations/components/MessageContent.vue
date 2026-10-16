@@ -5,7 +5,7 @@ import { copyToClipboard } from '@/lib/clipboard'
 
 import { renderAssistantMarkdown, segmentUserText } from '../markdown'
 
-const props = defineProps<{ role: 'user' | 'assistant'; text: string }>()
+const props = defineProps<{ role: 'user' | 'assistant' | 'system'; text: string }>()
 
 const html = computed(() => (props.role === 'assistant' ? renderAssistantMarkdown(props.text) : ''))
 const segments = computed(() => (props.role === 'user' ? segmentUserText(props.text) : []))
@@ -97,6 +97,12 @@ onBeforeUnmount(() => {
         >{{ segment.text }}</code
       >
     </template>
+  </p>
+  <!-- A system message is a centred caption in Subtext, not a turn: it reports
+       what the transcript did rather than saying something. (DESIGN.md —
+       Conversation Turn.) -->
+  <p v-else-if="role === 'system'" class="w-full text-center text-body-sm text-subtext">
+    {{ text }}
   </p>
   <div
     v-else

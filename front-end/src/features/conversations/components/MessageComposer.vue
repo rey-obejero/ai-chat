@@ -11,6 +11,7 @@ import IconPlus from '~icons/lucide/plus'
 import IconSquare from '~icons/lucide/square'
 
 import CommandPalette from './CommandPalette.vue'
+import type { ModelInfo } from '../api'
 import {
   applyCommand,
   commandOptionId,
@@ -20,19 +21,51 @@ import {
 } from '../commands'
 
 const draft = defineModel<string>({ required: true })
+/**
+ * The model the next reply will use. Null while this conversation carries no
+ * choice of its own, which is when the server's default answers — before the
+ * first message the choice rides on the create, afterwards it is a PATCH and a
+ * caption. The parent owns the value; see DESIGN.md — Model Selector.
+ */
+const model = defineModel<string | null>('model', { default: null })
 
-defineProps<{ disabled: boolean; busy: boolean }>()
+const props = withDefaults(
+  defineProps<{ disabled: boolean; busy: boolean; models?: ModelInfo[] }>(),
+  { models: () => [] },
+)
 const emit = defineEmits<{ submit: []; stop: [] }>()
 
 const textarea = ref<ComponentPublicInstance | null>(null)
 const modelMenu = ref()
 
-// One model is served (llm_model is a single server setting), so Auto is the
-// only entry. The dropdown is the affordance; switching needs the API to accept
-// a model first. See DESIGN.md — Model Selector.
-const model = ref('Auto')
+/**
+ * `GET /models`. The server's default is annotated, so a conversation with no
+ * choice of its own still says which model will answer.
+ */
+const modelItems = computed<MenuItem[]>(() =>
+  props.models.map((entry) => ({
+    label: entry.is_default ? `${entry.label} (default)` : entry.label,
+    command: () => {
+      model.value = entry.id
+    },
+  })),
+)
 
-const modelItems: MenuItem[] = [{ label: 'Auto' }]
+/**
+ * Naming the model that will answer the next message: the chosen one, else the
+ * server's default when several are served, else 'Auto' — with a single served
+ * model that is the honest word for the only entry there is.
+ */
+const modelLabel = computed(() => {
+  const chosen = props.models.find((entry) => entry.id === model.value)
+  if (chosen) {
+    return chosen.label
+  }
+  if (props.models.length > 1) {
+    return props.models.find((entry) => entry.is_default)?.label ?? 'Auto'
+  }
+  return 'Auto'
+})
 
 /**
  * The command palette (WI-10, DESIGN.md — Command Palette). A draft that starts
@@ -196,10 +229,11 @@ defineExpose({ focus, insert })
           text
           aria-haspopup="true"
           aria-controls="model_menu"
+          :disabled="busy || models.length === 0"
           class="rounded-lg !px-2 !py-1.5 !text-body-sm"
           @click="toggleModel"
         >
-          <span>{{ model }}</span>
+          <span>{{ modelLabel }}</span>
           <IconChevronDown class="ml-1.5 size-4 shrink-0 text-icon" stroke-width="2" />
         </Button>
 

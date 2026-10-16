@@ -5,9 +5,10 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from ai_chat.auth import get_current_user_id
+from ai_chat.auth import get_current_user_id, get_or_create_user
 from ai_chat.conversations.models import ASSISTANT_ROLE, USER_ROLE, Conversation, Message
 from ai_chat.conversations.schemas import (
+    ConversationCreate,
     ConversationPage,
     ConversationRead,
     ConversationUpdate,
@@ -27,6 +28,7 @@ from ai_chat.conversations.service import (
     get_owned_message,
     list_messages,
     replace_content,
+    resolve_model,
     search_conversations,
     truncate_after,
     update_conversation,
@@ -36,7 +38,7 @@ from ai_chat.conversations.streaming import (
     replay_reply,
     stream_reply,
 )
-from ai_chat.llm import ChatProvider, get_chat_provider
+from ai_chat.llm import ChatProvider, build_system_prompt, get_chat_provider
 from ai_chat.shared.config import Settings
 from ai_chat.shared.db import get_session, get_session_factory
 from ai_chat.shared.exceptions import (
@@ -78,10 +80,18 @@ async def read_conversations(
 
 @router.post("", response_model=ConversationRead, status_code=status.HTTP_201_CREATED)
 async def new_conversation(
+    request: Request,
+    payload: ConversationCreate | None = Body(default=None),
     user_id: str = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ) -> ConversationRead:
-    conversation = await create_conversation(session, user_id)
+    """Open a conversation, optionally on one of the served models (FR-23)."""
+    conversation = await create_conversation(
+        session,
+        user_id,
+        model=payload.model if payload is not None else None,
+        settings=_settings(request),
+    )
     return ConversationRead.model_validate(conversation)
 
 
@@ -89,23 +99,27 @@ async def new_conversation(
 async def edit_conversation(
     conversation_id: uuid.UUID,
     payload: ConversationUpdate,
+    request: Request,
     user_id: str = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ) -> ConversationRead:
-    """Rename a conversation, or move it between pinned/favourite/archived (FR-16).
+    """Rename a conversation, move it between states, or switch its model (FR-16, FR-23).
 
     A partial update: the fields that are absent keep their value. This is not
-    a streaming write, so it does not take the generation gate (ADR-0052) — it
-    touches no message and cannot interleave with a reply's transcript.
+    a streaming write, so it does not take the generation gate (ADR-0052): a
+    model switch is meant to be available while a reply streams, and the
+    caption it writes is an append that cannot rewind the transcript.
     """
     conversation = await get_owned_conversation(session, user_id, conversation_id)
     updated = await update_conversation(
         session,
         conversation,
         title=payload.title,
+        model=payload.model,
         is_pinned=payload.is_pinned,
         is_favourite=payload.is_favourite,
         is_archived=payload.is_archived,
+        settings=_settings(request),
     )
     return ConversationRead.model_validate(updated)
 
@@ -347,7 +361,16 @@ async def _stream_response(
     provider: ChatProvider,
     client_id: uuid.UUID | None,
 ) -> StreamingResponse:
-    """The one SSE shape every streaming route shares, gate and disconnect included."""
+    """The one SSE shape every streaming route shares, gate and disconnect included.
+
+    Both personalisation inputs are resolved here, before the history is read,
+    so the transcript the provider sees is the one on disk — including the
+    caption a fallback may have just written (FR-23, FR-24, FR-25).
+    """
+    settings = _settings(request)
+    model = await resolve_model(session, conversation, settings)
+    owner = await get_or_create_user(session, user_id)
+    system_prompt = build_system_prompt(owner.instructions, owner.response_style)
     history = build_history(await list_messages(session, conversation.id))
     return StreamingResponse(
         stream_reply(
@@ -355,6 +378,8 @@ async def _stream_response(
             conversation_id=conversation.id,
             user_id=user_id,
             history=history,
+            model=model,
+            system_prompt=system_prompt,
             session_factory=session_factory,
             client_id=client_id,
             is_disconnected=request.is_disconnected,

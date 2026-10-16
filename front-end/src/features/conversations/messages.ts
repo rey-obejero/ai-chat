@@ -132,6 +132,20 @@ export function toUIMessages(history: Message[]): UIMessage[] {
   }))
 }
 
+/**
+ * The disclosure a model switch writes into the transcript (FR-23), as a client
+ * message: the server persists the same sentence as a system message, so the
+ * local caption and the one a reload fetches read identically. A silent switch
+ * is structurally impossible because the switch is what writes it.
+ */
+export function modelSwitchMessage(label: string): UIMessage {
+  return {
+    id: newClientId(),
+    role: 'system',
+    parts: [{ type: 'text', text: `Model set to ${label}` }],
+  }
+}
+
 /** Readable copy for the problem codes the API can return. */
 const ERROR_COPY: Record<string, string> = {
   LLM_NOT_CONFIGURED: 'The assistant has not been configured yet.',

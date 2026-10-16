@@ -14,8 +14,8 @@ import IconSearch from '~icons/lucide/search'
 import RootLayout from '@/components/layouts/RootLayout.vue'
 import SidebarGroup from '@/components/layouts/SidebarGroup.vue'
 import { useSessionStore } from '@/features/auth'
-import { SettingsDialog } from '@/features/settings'
-import { listMessages, type Conversation } from '../api'
+import { SettingsDialog, type SettingsSection } from '@/features/settings'
+import { listMessages, listModels, type Conversation, type ModelInfo } from '../api'
 import ConversationList from '../components/ConversationList.vue'
 import MessageComposer from '../components/MessageComposer.vue'
 import MessageList from '../components/MessageList.vue'
@@ -28,6 +28,7 @@ import {
   describeError,
   messageClientId,
   messageText,
+  modelSwitchMessage,
   resetConversationAction,
   setConversationAction,
   toUIMessages,
@@ -43,10 +44,19 @@ const collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true')
 const draft = ref('')
 const accountMenu = ref()
 const settingsOpen = ref(false)
+/** The section the account menu asked the settings dialog to show (FR-24). */
+const settingsSection = ref<SettingsSection | null>(null)
 const composer = ref<InstanceType<typeof MessageComposer> | null>(null)
 const scrollArea = ref<HTMLElement | null>(null)
 const hydrating = ref(false)
 const searchTerm = ref('')
+const models = ref<ModelInfo[]>([])
+/**
+ * The model picked before the first message. It has nowhere to live yet, so it
+ * rides on the create; once a conversation exists it is a property of that
+ * conversation instead (FR-23).
+ */
+const pendingModel = ref<string | null>(null)
 const confirm = useConfirm()
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -55,9 +65,29 @@ const conversationId = computed(() => {
   return typeof id === 'string' && id.length > 0 ? id : null
 })
 
-const title = computed(
-  () => conversations.conversations.find((item) => item.id === conversationId.value)?.title ?? '',
+/** The conversation the route names, as the sidebar list holds it. */
+const activeConversation = computed(() =>
+  conversations.conversations.find((item) => item.id === conversationId.value),
 )
+
+const title = computed(() => activeConversation.value?.title ?? '')
+
+/**
+ * The model the composer names (FR-23). A new conversation has only the pending
+ * choice; one that exists has its own, which the server keeps. Selecting is
+ * therefore a pending value in one case and a PATCH in the other.
+ */
+const composerModel = computed<string | null>({
+  get: () =>
+    conversationId.value ? (activeConversation.value?.model ?? null) : pendingModel.value,
+  // The picker only ever names a model. No way back to the server's default is
+  // offered, because the API takes a model or no change, never a null one.
+  set: (id) => {
+    if (id !== null) {
+      void switchModel(id)
+    }
+  },
+})
 
 const chat = useChat({
   transport: createConversationTransport(
@@ -108,12 +138,24 @@ const sections = computed(() => {
 const initial = computed(() => (session.user?.email ?? '?').charAt(0).toUpperCase())
 
 const accountItems = computed<MenuItem[]>(() => [
-  { label: 'Personalization' },
-  { label: 'Profile' },
-  { label: 'Settings', command: () => (settingsOpen.value = true) },
+  { label: 'Personalization', command: () => openSettings('personalization') },
+  // The name section Profile scrolls to arrives with WI-4; until then it opens
+  // the dialog at its top, like Settings.
+  { label: 'Profile', command: () => openSettings(null) },
+  { label: 'Settings', command: () => openSettings(null) },
   { separator: true },
   { label: 'Sign out', command: () => void signOut() },
 ])
+
+/**
+ * The dialog opens from three places, one of which names the section to bring
+ * into view (FR-24). The section is cleared for the others, so a stale one
+ * cannot pull the dialog somewhere the click did not ask for.
+ */
+function openSettings(section: SettingsSection | null): void {
+  settingsSection.value = section
+  settingsOpen.value = true
+}
 
 watch(collapsed, (value) => {
   localStorage.setItem('sidebar-collapsed', String(value))
@@ -124,7 +166,21 @@ watch(messages, () => void scrollToNewest(), { flush: 'post' })
 
 onMounted(() => {
   void conversations.load()
+  void loadModels()
 })
+
+/**
+ * The models the server will answer with, for the composer's picker (FR-23).
+ * Without them the picker names nothing, which is better than naming a model
+ * the server may no longer serve.
+ */
+async function loadModels(): Promise<void> {
+  try {
+    models.value = await listModels()
+  } catch {
+    models.value = []
+  }
+}
 
 // A pending debounce must not outlive the view and write to a disposed store.
 onBeforeUnmount(() => clearTimeout(searchTimer))
@@ -188,8 +244,44 @@ function toggleAccount(event: Event): void {
 }
 
 async function newConversation(): Promise<void> {
-  const created = await conversations.create()
+  const created = await startConversation()
   await router.push({ name: 'conversations', params: { id: created.id } })
+}
+
+/**
+ * Create a conversation carrying the model picked before the first message, and
+ * forget the pending choice: from here on the model belongs to the conversation
+ * and a change to it is a PATCH (FR-23).
+ */
+async function startConversation(): Promise<Conversation> {
+  const model = pendingModel.value
+  pendingModel.value = null
+  return conversations.create(model ?? undefined)
+}
+
+/**
+ * A picked model. Before the first message there is no conversation to update,
+ * so the choice is only remembered for the create to carry; afterwards it is a
+ * PATCH, and the switch is disclosed by a caption the server persists as well —
+ * so a silent switch cannot happen (FR-23).
+ */
+async function switchModel(id: string): Promise<void> {
+  if (!conversationId.value) {
+    pendingModel.value = id
+    return
+  }
+
+  // The server writes nothing for the model a conversation already has, and so
+  // must this: a caption here that no reload can find would be a lie.
+  if (activeConversation.value?.model === id) {
+    return
+  }
+
+  const label = models.value.find((entry) => entry.id === id)?.label ?? id
+  if (!(await conversations.setModel(conversationId.value, id))) {
+    return
+  }
+  chat.messages.value = [...chat.messages.value, modelSwitchMessage(label)]
 }
 
 /**
@@ -254,7 +346,7 @@ async function submit(): Promise<void> {
   // No conversation yet: create one, hand the text over, and let the route
   // watcher send it once the new id is in place.
   if (!conversationId.value) {
-    const created = await conversations.create()
+    const created = await startConversation()
     draft.value = ''
     conversations.queueMessage(text)
     await router.push({ name: 'conversations', params: { id: created.id } })
@@ -436,6 +528,8 @@ async function signOut(): Promise<void> {
           <MessageComposer
             ref="composer"
             v-model="draft"
+            v-model:model="composerModel"
+            :models="models"
             :disabled="!canSend"
             :busy="busy"
             @submit="submit"
@@ -456,6 +550,8 @@ async function signOut(): Promise<void> {
             <MessageComposer
               ref="composer"
               v-model="draft"
+              v-model:model="composerModel"
+              :models="models"
               :disabled="!canSend"
               :busy="busy"
               @submit="submit"
@@ -470,7 +566,7 @@ async function signOut(): Promise<void> {
     </template>
   </RootLayout>
 
-  <SettingsDialog v-model="settingsOpen" />
+  <SettingsDialog v-model="settingsOpen" :section="settingsSection" />
   <ConfirmDialog />
 </template>
 

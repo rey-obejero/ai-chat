@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class Role(StrEnum):
@@ -36,3 +36,18 @@ class ChatChunk(BaseModel):
     content: str = ""
     finish_reason: str | None = None
     usage: TokenUsage | None = None
+
+
+class ModelRead(BaseModel):
+    """One model the picker can offer (FR-23).
+
+    ``label`` is what the button shows; it equals the id until a deployment
+    wants friendlier names. ``is_default`` marks the one model a request
+    without a choice goes to.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    label: str
+    is_default: bool

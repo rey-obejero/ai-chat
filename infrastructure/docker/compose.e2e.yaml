@@ -30,6 +30,9 @@ services:
       LLM_API_KEY: e2e-key
       LLM_BASE_URL: http://mock-llm:4010/v1
       LLM_MODEL: e2e/mock
+      # Two served models so the picker has something to switch to (WI-11).
+      # pydantic-settings JSON-decodes list fields from the environment.
+      LLM_MODELS: '["e2e/mock","e2e/mock-alt"]'
       # The suite signs in repeatedly and shares rate-limit buckets across
       # workers; no e2e test asserts rate limiting (the back-end suite covers
       # the 429 path), so it is off here.

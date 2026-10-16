@@ -1,20 +1,37 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import Menu from 'primevue/menu'
 import PrimeVue from 'primevue/config'
+import type { MenuItem } from 'primevue/menuitem'
 import Tooltip from 'primevue/tooltip'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { ModelInfo } from '@/features/conversations/api'
 import MessageComposer from '@/features/conversations/components/MessageComposer.vue'
 import { COMMANDS, commandOptionId } from '@/features/conversations/commands'
 
 const mounted: VueWrapper[] = []
 
+/** Two served models, the default first, as `GET /models` answers (FR-23). */
+const MODELS: ModelInfo[] = [
+  { id: 'model-a', label: 'Model A', is_default: true },
+  { id: 'model-b', label: 'Model B', is_default: false },
+]
+
 /**
  * Attached to the body so the composer's focus return is observable; the text
  * field starts empty, as it does in the view.
  */
-function mountComposer(): VueWrapper {
+function mountComposer(
+  props: { models?: ModelInfo[]; model?: string | null; busy?: boolean } = {},
+): VueWrapper {
   const wrapper = mount(MessageComposer, {
-    props: { modelValue: '', disabled: false, busy: false },
+    props: {
+      modelValue: '',
+      disabled: false,
+      busy: props.busy ?? false,
+      models: props.models ?? [],
+      model: props.model ?? null,
+    },
     attachTo: document.body,
     global: { plugins: [PrimeVue], directives: { tooltip: Tooltip } },
   })
@@ -203,5 +220,51 @@ describe('MessageComposer command palette', () => {
     await textarea.trigger('keydown', { key: 'Enter' })
 
     expect(wrapper.emitted('submit')).toHaveLength(1)
+  })
+})
+
+describe('MessageComposer model picker', () => {
+  it('names the served default while the conversation has no model of its own', () => {
+    const wrapper = mountComposer({ models: MODELS })
+
+    expect(wrapper.find('[aria-controls="model_menu"]').text()).toBe('Model A')
+  })
+
+  it('reads Auto while a single model is served', () => {
+    const wrapper = mountComposer({ models: [MODELS[0]!] })
+
+    expect(wrapper.find('[aria-controls="model_menu"]').text()).toBe('Auto')
+  })
+
+  it('lists the served models and marks the default', () => {
+    const wrapper = mountComposer({ models: MODELS, model: 'model-b' })
+
+    const items = wrapper.findComponent(Menu).props('model') as MenuItem[]
+
+    expect(items.map((item) => item.label)).toEqual(['Model A (default)', 'Model B'])
+  })
+
+  it('offers the models in its menu and hands back the one picked', async () => {
+    const wrapper = mountComposer({ models: MODELS })
+
+    await wrapper.find('[aria-controls="model_menu"]').trigger('click')
+    await flushPromises()
+
+    const entries = document.body.querySelectorAll<HTMLElement>('.p-menu-item-content')
+    expect([...entries].map((entry) => entry.textContent?.trim())).toEqual([
+      'Model A (default)',
+      'Model B',
+    ])
+
+    entries[1]!.click()
+    await flushPromises()
+
+    expect(wrapper.emitted('update:model')).toEqual([['model-b']])
+  })
+
+  it('is disabled while a reply streams, so a switch cannot interrupt one', () => {
+    const wrapper = mountComposer({ models: MODELS, busy: true })
+
+    expect(wrapper.find('[aria-controls="model_menu"]').attributes('disabled')).toBeDefined()
   })
 })

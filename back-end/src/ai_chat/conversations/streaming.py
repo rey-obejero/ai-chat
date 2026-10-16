@@ -23,6 +23,21 @@ def build_history(messages: Sequence[Message]) -> list[ChatMessage]:
     return [ChatMessage(role=Role(message.role), content=message.content) for message in messages]
 
 
+def with_system_prompt(
+    history: Sequence[ChatMessage], system_prompt: str | None
+) -> list[ChatMessage]:
+    """The account's prompt as the first message the provider sees.
+
+    It leads rather than follows because a provider that honours only one system
+    message would otherwise drop it in favour of whatever caption the transcript
+    last held; leading also keeps the instructions away from the turns they
+    shape. Nothing is prepended when the account has asked for nothing.
+    """
+    if not system_prompt:
+        return list(history)
+    return [ChatMessage(role=Role.SYSTEM, content=system_prompt), *history]
+
+
 async def replay_reply(message: Message) -> AsyncIterator[str]:
     """Re-emit an already-persisted reply, so a retried write is invisible (H3)."""
     text_id = f"text_{message.id.hex}"
@@ -41,11 +56,17 @@ async def stream_reply(
     conversation_id: uuid.UUID,
     user_id: str,
     history: Sequence[ChatMessage],
+    model: str,
     session_factory: async_sessionmaker[AsyncSession],
+    system_prompt: str | None = None,
     client_id: uuid.UUID | None = None,
     is_disconnected: Callable[[], Awaitable[bool]] | None = None,
 ) -> AsyncIterator[str]:
     """Yield stream parts for one reply, persisting it when it completes.
+
+    ``model`` is the conversation's effective model and ``system_prompt`` the
+    account's composed instructions; both are resolved by the route, because
+    both come from stored state the route has already read.
 
     A failure mid-stream is reported as an ``error`` part rather than an
     exception, because the response status has already been committed by then.
@@ -62,7 +83,7 @@ async def stream_reply(
     # the provider or the write failed, because the client hears about that
     # through an `error` part instead.
     keep_partial = True
-    chunks = provider.stream_chat(history)
+    chunks = provider.stream_chat(with_system_prompt(history, system_prompt), model=model)
 
     try:
         yield sse.start(str(message_id))

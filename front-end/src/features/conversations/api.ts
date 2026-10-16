@@ -7,17 +7,35 @@ export interface Conversation {
   is_pinned: boolean
   is_favourite: boolean
   is_archived: boolean
+  /**
+   * The model chosen for this conversation (FR-23), or null while the server's
+   * default answers. A property of the conversation, not of the account.
+   */
+  model: string | null
   /** `max(messages.created_at)`, the list's ordering key (locked decision 1). */
   last_activity_at: string
 }
 
 export interface Message {
   id: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
   created_at: string
   /** The key the write that created this turn carried (ADR-0050). Null on older rows. */
   client_id?: string | null
+}
+
+/** One entry of `GET /models`: a model the server will answer with. */
+export interface ModelInfo {
+  id: string
+  label: string
+  /** True for `llm_model`, the one a conversation with no model of its own uses. */
+  is_default: boolean
+}
+
+/** The served models, with the server's default marked (FR-23). */
+export function listModels(): Promise<ModelInfo[]> {
+  return apiFetch<ModelInfo[]>('/models')
 }
 
 /** One cursor page: `next_cursor` is null once the last page has been returned. */
@@ -55,6 +73,8 @@ export interface ConversationUpdate {
   is_pinned?: boolean
   is_favourite?: boolean
   is_archived?: boolean
+  /** The model to answer with from the next reply on (FR-23). */
+  model?: string
 }
 
 export function updateConversation(id: string, update: ConversationUpdate): Promise<Conversation> {
@@ -68,8 +88,15 @@ export function deleteConversation(id: string): Promise<void> {
   return apiFetch<void>(`/conversations/${id}`, { method: 'DELETE' })
 }
 
-export function createConversation(): Promise<Conversation> {
-  return apiFetch<Conversation>('/conversations', { method: 'POST' })
+/**
+ * A new conversation, carrying the model the composer had picked before the
+ * first message (FR-23); without one the server's default answers.
+ */
+export function createConversation(model?: string): Promise<Conversation> {
+  return apiFetch<Conversation>('/conversations', {
+    method: 'POST',
+    ...(model ? { body: JSON.stringify({ model }) } : {}),
+  })
 }
 
 export function listMessages(conversationId: string): Promise<Message[]> {

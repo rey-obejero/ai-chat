@@ -5,6 +5,7 @@ from fastapi import APIRouter, FastAPI
 from ai_chat.auth import resolve_user_id
 from ai_chat.auth import router as auth_router
 from ai_chat.conversations import router as conversations_router
+from ai_chat.llm import router as models_router
 from ai_chat.media import router as media_router
 from ai_chat.shared.config import Settings, get_settings
 from ai_chat.shared.exceptions import register_exception_handlers
@@ -64,6 +65,7 @@ def create_app(settings: Settings | None = None, *, init_auth: bool = True) -> F
 
     api.include_router(auth_router)
     api.include_router(conversations_router)
+    api.include_router(models_router)
     api.include_router(usage_router)
     if settings.media_proxy_enabled:
         api.include_router(media_router)

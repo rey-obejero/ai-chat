@@ -1,6 +1,12 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
+
+from ai_chat.llm import ResponseStyle
+
+# The cap on standing instructions (FR-24). They ride every reply, so they are
+# bounded here rather than left to the provider's own context limit.
+INSTRUCTIONS_MAX_LENGTH = 2000
 
 
 class UserRead(BaseModel):
@@ -8,7 +14,41 @@ class UserRead(BaseModel):
 
     id: str
     email: str
+    # The account owner's own settings, the way the email is theirs: the
+    # settings form loads in one call and always sees what the service holds.
+    instructions: str | None
+    response_style: ResponseStyle
     created_at: datetime
+
+
+class PreferencesUpdate(BaseModel):
+    """A partial update of the account's personalisation (FR-24, FR-25).
+
+    Changing either affects future replies only: nothing already said is
+    rewritten, which is why this is a settings write and not a conversation one.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    instructions: str | None = None
+    response_style: ResponseStyle | None = None
+
+    @field_validator("instructions", "response_style", mode="before")
+    @classmethod
+    def _reject_null(cls, value: object, info: ValidationInfo) -> object:
+        # A field is absent or it carries a value. Clearing instructions is
+        # sending them empty, not sending `null`.
+        if value is None:
+            raise ValueError(f"{info.field_name} may not be null; omit it instead.")
+        return value
+
+    @field_validator("instructions")
+    @classmethod
+    def _clean_instructions(cls, value: str) -> str:
+        cleaned = value.strip()
+        if len(cleaned) > INSTRUCTIONS_MAX_LENGTH:
+            raise ValueError(f"instructions must be at most {INSTRUCTIONS_MAX_LENGTH} characters")
+        return cleaned
 
 
 class SocialProviderRead(BaseModel):

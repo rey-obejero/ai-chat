@@ -1,6 +1,12 @@
+import json
 from functools import lru_cache
+from typing import Annotated, Self
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+# What `LLM_MODELS` accepts, stated once so the rejection message names both forms.
+_LLM_MODELS_FORM = "LLM_MODELS must be a comma-separated list of ids or a JSON array of ids"
 
 
 class Settings(BaseSettings):
@@ -58,6 +64,12 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_base_url: str = "https://openrouter.ai/api/v1"
     llm_model: str = "openai/gpt-4o-mini"
+    # What the model picker offers (FR-23). Empty means "just `llm_model`",
+    # which is also what a single-model deployment gets without setting
+    # anything: multi-model support is an environment change, not a code one.
+    # Written either as a comma-separated list or as a JSON array; `NoDecode`
+    # is what lets the comma form arrive (see `_parse_llm_models`).
+    llm_models: Annotated[list[str], NoDecode] = []
     llm_embedding_model: str = "openai/text-embedding-3-small"
     llm_max_output_tokens: int = 1024
     llm_request_timeout: float = 60.0
@@ -80,7 +92,7 @@ class Settings(BaseSettings):
     rate_limit_fail_open: bool = True
 
     # How long a conversation may stay claimed by an in-flight stream before a
-    # later writer is allowed to take it over (ADR-0050). A crashed worker
+    # later writer is allowed to take it over (ADR-0052). A crashed worker
     # self-heals instead of wedging the conversation forever.
     stream_grace_seconds: int = 120
 
@@ -101,6 +113,45 @@ class Settings(BaseSettings):
     @property
     def supertokens_api_key_or_none(self) -> str | None:
         return self.supertokens_api_key or None
+
+    @field_validator("llm_models", mode="before")
+    @classmethod
+    def _parse_llm_models(cls, value: object) -> object:
+        """Read the list from either form an operator can reasonably write.
+
+        The `NoDecode` annotation on the field is what makes a hand-written
+        value reach this at all: without it the environment source JSON-decodes
+        a complex field before validation, so `a,b` fails there and the process
+        never starts.
+        """
+        if not isinstance(value, str):
+            return value
+
+        text = value.strip()
+        if text.startswith(("[", "{")):
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError as error:
+                raise ValueError(_LLM_MODELS_FORM) from error
+            if not isinstance(parsed, list):
+                raise ValueError(_LLM_MODELS_FORM)
+            return parsed
+        return [item.strip() for item in text.split(",") if item.strip()]
+
+    @model_validator(mode="after")
+    def _resolve_llm_models(self) -> Self:
+        """Make `llm_model` invariably one of the served models (FR-23).
+
+        It is the default a request without a choice goes to, so it has to be
+        in the list the picker offers: otherwise the list would have no
+        `is_default` entry, and nothing to fall back to. Duplicates collapse,
+        because the picker would otherwise show one model twice.
+        """
+        models = [model for model in dict.fromkeys(self.llm_models) if model]
+        if self.llm_model not in models:
+            models.insert(0, self.llm_model)
+        self.llm_models = models
+        return self
 
 
 @lru_cache
