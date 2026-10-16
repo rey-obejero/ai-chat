@@ -2,6 +2,7 @@
 import type { UIMessage } from 'ai'
 
 import { messageText } from '../messages'
+import MessageContent from './MessageContent.vue'
 
 defineProps<{ messages: UIMessage[]; working: boolean }>()
 </script>
@@ -25,15 +26,10 @@ defineProps<{ messages: UIMessage[]; working: boolean }>()
       >
         {{ message.role === 'user' ? 'You' : 'Assistant' }}
       </span>
-      <p
-        v-if="message.role === 'user'"
-        class="max-w-[85%] rounded-xl bg-line/60 px-4 py-2.5 text-body leading-relaxed whitespace-pre-wrap text-ink"
-      >
-        {{ messageText(message) }}
-      </p>
-      <p v-else class="w-full leading-relaxed whitespace-pre-wrap text-body text-ink">
-        {{ messageText(message) }}
-      </p>
+      <MessageContent
+        :role="message.role === 'user' ? 'user' : 'assistant'"
+        :text="messageText(message)"
+      />
     </div>
 
     <div v-if="working" role="status" class="flex items-center gap-2 text-body-sm text-subtext">

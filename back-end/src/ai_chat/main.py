@@ -5,6 +5,7 @@ from fastapi import APIRouter, FastAPI
 from ai_chat.auth import resolve_user_id
 from ai_chat.auth import router as auth_router
 from ai_chat.conversations import router as conversations_router
+from ai_chat.media import router as media_router
 from ai_chat.shared.config import Settings, get_settings
 from ai_chat.shared.exceptions import register_exception_handlers
 from ai_chat.shared.rate_limit import RateLimitMiddleware, build_rate_limit_policy
@@ -22,6 +23,10 @@ def create_app(settings: Settings | None = None, *, init_auth: bool = True) -> F
         finally:
             if policy is not None:
                 await policy.aclose()
+            # Only built lazily on the first proxied image, if ever.
+            media_client = getattr(_app.state, "media_client", None)
+            if media_client is not None:
+                await media_client.aclose()
 
     app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
     # Dependencies read the settings the app was built with, not the global
@@ -60,6 +65,8 @@ def create_app(settings: Settings | None = None, *, init_auth: bool = True) -> F
     api.include_router(auth_router)
     api.include_router(conversations_router)
     api.include_router(usage_router)
+    if settings.media_proxy_enabled:
+        api.include_router(media_router)
     app.include_router(api)
 
     return app

@@ -100,3 +100,5 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0044](0044-assistant-markdown-user-plain-text.md) | Assistant messages render as Markdown, user messages as plain text | Accepted | 2026-10-06 |
 | [0045](0045-display-name-derivation-and-filtering.md) | Display names default to the email local part and are filtered | Accepted | 2026-10-06 |
 | [0046](0046-vite-proxy-in-development.md) | Vite's proxy fronts development; Caddy is the self-host front door | Accepted | 2026-10-06 |
+| [0047](0047-markdown-pipeline.md) | Markdown is parsed with escaped HTML, sanitised, and highlighted synchronously | Accepted | 2026-10-17 |
+| [0051](0051-external-images-are-proxied.md) | External images in replies are fetched through the application's own proxy | Accepted | 2026-10-17 |
