@@ -3,12 +3,21 @@ import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
 import Textarea from 'primevue/textarea'
-import { nextTick, ref, type ComponentPublicInstance } from 'vue'
+import { computed, nextTick, ref, watch, type ComponentPublicInstance } from 'vue'
 
 import IconArrowUp from '~icons/lucide/arrow-up'
 import IconChevronDown from '~icons/lucide/chevron-down'
 import IconPlus from '~icons/lucide/plus'
 import IconSquare from '~icons/lucide/square'
+
+import CommandPalette from './CommandPalette.vue'
+import {
+  applyCommand,
+  commandOptionId,
+  commandQuery,
+  filterCommands,
+  type Command,
+} from '../commands'
 
 const draft = defineModel<string>({ required: true })
 
@@ -25,11 +34,97 @@ const model = ref('Auto')
 
 const modelItems: MenuItem[] = [{ label: 'Auto' }]
 
+/**
+ * The command palette (WI-10, DESIGN.md — Command Palette). A draft that starts
+ * with a slash filters the registry and the highlighted command's template
+ * replaces the leading `/filter`: nothing here sends, so a lone slash cannot.
+ */
+const paletteOpen = ref(false)
+const query = computed(() => commandQuery(draft.value))
+const matches = computed(() => (query.value === null ? [] : filterCommands(query.value)))
+const activeIndex = ref(0)
+const activeCommand = computed(() => matches.value[activeIndex.value])
+/** The filter Escape dismissed; typing a different one reopens the palette. */
+const dismissedQuery = ref<string | null>(null)
+
+watch(draft, (value) => {
+  const current = commandQuery(value)
+
+  if (current === null) {
+    paletteOpen.value = false
+    dismissedQuery.value = null
+    return
+  }
+
+  paletteOpen.value = current !== dismissedQuery.value
+})
+
+// A new filter starts at its best match.
+watch(query, () => {
+  activeIndex.value = 0
+})
+
 function toggleModel(event: Event): void {
   modelMenu.value?.toggle(event)
 }
 
+function dismiss(): void {
+  paletteOpen.value = false
+  dismissedQuery.value = query.value
+}
+
+function select(command: Command): void {
+  draft.value = applyCommand(draft.value, command)
+  void focus()
+}
+
+/** True when the palette consumed the key, so it never reaches the composer. */
+function paletteKeydown(event: KeyboardEvent): boolean {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    dismiss()
+    return true
+  }
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    const count = matches.value.length
+    if (count > 0) {
+      const step = event.key === 'ArrowDown' ? 1 : -1
+      activeIndex.value = (activeIndex.value + step + count) % count
+    }
+    return true
+  }
+
+  // Shift+Enter is a newline and never submits, so it stays with the draft.
+  if (event.key === 'Enter' && event.shiftKey) {
+    return false
+  }
+
+  if (event.key === 'Enter') {
+    // Enter belongs to the palette while it is open, matched or not.
+    event.preventDefault()
+    if (activeCommand.value) {
+      select(activeCommand.value)
+    }
+    return true
+  }
+
+  // Tab selects only when there is a command to select.
+  if (event.key === 'Tab' && activeCommand.value) {
+    event.preventDefault()
+    select(activeCommand.value)
+    return true
+  }
+
+  return false
+}
+
 function onKeydown(event: KeyboardEvent): void {
+  if (paletteOpen.value && paletteKeydown(event)) {
+    return
+  }
+
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
     emit('submit')
@@ -41,6 +136,10 @@ async function focus(): Promise<void> {
   const element = textarea.value?.$el
   if (element instanceof HTMLElement) {
     element.focus()
+    if (element instanceof HTMLTextAreaElement) {
+      const end = element.value.length
+      element.setSelectionRange(end, end)
+    }
   }
 }
 
@@ -55,7 +154,7 @@ defineExpose({ focus, insert })
 
 <template>
   <div
-    class="rounded-xl border border-line bg-paper-white p-3 shadow-elevated motion-reduce:transition-none"
+    class="relative rounded-xl border border-line bg-paper-white p-3 shadow-elevated motion-reduce:transition-none"
   >
     <Textarea
       ref="textarea"
@@ -64,8 +163,20 @@ defineExpose({ focus, insert })
       rows="2"
       placeholder="Ask anything."
       aria-label="Message"
+      :aria-controls="paletteOpen ? 'command-palette' : undefined"
+      :aria-activedescendant="
+        paletteOpen && activeCommand ? commandOptionId(activeCommand) : undefined
+      "
       class="w-full resize-none border-0 bg-transparent p-0 text-base shadow-none focus:ring-0 sm:text-sm"
       @keydown="onKeydown"
+    />
+
+    <CommandPalette
+      v-if="paletteOpen"
+      :commands="matches"
+      :active-index="activeIndex"
+      @select="select"
+      @close="dismiss"
     />
 
     <div class="mt-3 flex items-center justify-between gap-3">

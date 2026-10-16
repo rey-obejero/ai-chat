@@ -244,3 +244,35 @@ test("edits a user message without duplicating turns", async ({ signUpPage, page
   await expect(transcript.getByText("Mock reply: edit me", { exact: true })).toHaveCount(1);
   await expect(transcript.locator(".turn")).toHaveCount(2);
 });
+
+test("opens the command palette on a slash and inserts without sending", async ({
+  signUpPage,
+  page,
+}) => {
+  await signUpFreshAccount(signUpPage);
+  await page.getByRole("button", { name: "New conversation" }).click();
+
+  const composer = page.getByRole("textbox", { name: "Message" });
+  const palette = page.getByRole("listbox", { name: "Commands" });
+
+  // A lone slash opens the palette and never sends. `fill` sets the value
+  // without keystrokes, so type it the way a user does.
+  await composer.click();
+  await composer.pressSequentially("/");
+  await expect(palette).toBeVisible();
+
+  // Escape dismisses it and leaves the draft alone.
+  await composer.press("Escape");
+  await expect(palette).toHaveCount(0);
+  await expect(composer).toHaveValue("/");
+
+  // Arrow keys move the highlight; Enter inserts the template into the draft.
+  await composer.pressSequentially("e");
+  await expect(palette).toBeVisible();
+  await composer.press("Enter");
+  await expect(palette).toHaveCount(0);
+  expect((await composer.inputValue()).length).toBeGreaterThan(1);
+
+  // Nothing reached the provider.
+  await expect(page.getByRole("log").getByText(/^Mock reply/)).toHaveCount(0);
+});

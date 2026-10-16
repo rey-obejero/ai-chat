@@ -234,6 +234,21 @@ The card takes no focus ring of its own. It is a container of several controls, 
 
 The composer is a card, not an input, so the shadow rule permits it. Its border and fill follow the same low-contrast tradeoff as Text Input.
 
+### Command Palette
+**Role:** The slash-command list, anchored above the Composer Card.
+
+It opens when the draft begins with `/` and the text field holds the caret. The filter is what sits between the slash and the first space, matched case-insensitively against each command's name and id. Deleting the slash closes it, and so does Escape, which leaves the draft untouched — dismissing is never clearing. A slash anywhere else in the draft is ordinary prose (`/api/v1`); only a leading one is an invocation.
+
+Selecting a command — the highlighted one on Enter or Tab, or the clicked one — replaces the leading `/filter` with that command's template and returns the caret to the end of the draft, so the user can add detail before sending. The palette never sends a message: a command is a local prompt template, not a server feature, so its invocation is editable text the user still has to send. Enter therefore belongs to the palette while it is open, matched or not, and a lone slash cannot submit. Shift+Enter stays with the draft, since it never submits.
+
+**Surface.** Paper White fill, 1px Line border, 12px radius, `elevated` shadow, and 6px padding, anchored above the card with an 8px gap. It is capped at 16rem tall and scrolls past that. Rows are 8px/12px with an 8px radius, one command each: the label in Ink and the description in Subtext, both at body-sm.
+
+The row under the highlight fills with Line at 40%. That is the hover step rather than the Selected state: the highlight is a transient cursor, and Line at 60% would claim a persistence a popup cursor does not have.
+
+**Keyboard.** Up and Down move the highlight and wrap at either end; Enter or Tab inserts the highlighted command; Escape closes. The text field keeps focus throughout — the highlight is announced through `aria-activedescendant` on that field, over `role="listbox"` with `role="option"` rows, rather than by moving focus into the popup. Because the popup names itself, the field's accessible name is unchanged.
+
+A filter that matches nothing is not an empty box: the palette states 'No matching commands.' in Subtext at body-sm, in a polite live region.
+
 ### Conversation Turn
 **Role:** A single message in the transcript.
 
