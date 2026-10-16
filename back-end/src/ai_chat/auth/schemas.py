@@ -24,6 +24,11 @@ class UserRead(BaseModel):
     # settings form loads in one call and always sees what the service holds.
     instructions: str | None
     response_style: ResponseStyle
+    # Whether the address has been verified (FR-4). Read from the auth service
+    # rather than stored here: the recipe owns this state, and a copy in the row
+    # could disagree with it. It defaults to False, so a payload assembled
+    # without the flag claims nothing.
+    email_verified: bool = False
     created_at: datetime
 
 

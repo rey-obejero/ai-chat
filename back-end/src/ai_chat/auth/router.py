@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_chat.auth.adapter_supertokens import configured_providers
-from ai_chat.auth.dependencies import get_current_user_id
+from ai_chat.auth.dependencies import get_current_user_id, get_email_verified
+from ai_chat.auth.models import User
 from ai_chat.auth.schemas import (
     PreferencesUpdate,
     ProfileUpdate,
@@ -22,13 +23,24 @@ from ai_chat.shared.db import get_session
 router = APIRouter(tags=["auth"])
 
 
+def _payload(user: User, *, email_verified: bool) -> UserRead:
+    """The account as the API shows it, plus the state the row does not hold.
+
+    Verification belongs to the auth service (FR-4), so it is added here rather
+    than stored on the account; `UserRead` defaults it to False, and every
+    account read passes the real answer.
+    """
+    return UserRead.model_validate(user).model_copy(update={"email_verified": email_verified})
+
+
 @router.get("/me", response_model=UserRead)
 async def read_me(
     user_id: str = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
+    email_verified: bool = Depends(get_email_verified),
 ) -> UserRead:
     user = await get_or_create_user(session, user_id)
-    return UserRead.model_validate(user)
+    return _payload(user, email_verified=email_verified)
 
 
 @router.patch("/me", response_model=UserRead)
@@ -36,6 +48,7 @@ async def update_me(
     payload: ProfileUpdate,
     user_id: str = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
+    email_verified: bool = Depends(get_email_verified),
 ) -> UserRead:
     """Save the account's name, or record the skipped prompt (FR-7).
 
@@ -54,7 +67,7 @@ async def update_me(
         # Nothing to change: still a read of the stored account, so `{}` is a
         # valid (if pointless) request rather than an error.
         updated = user
-    return UserRead.model_validate(updated)
+    return _payload(updated, email_verified=email_verified)
 
 
 @router.put("/preferences", response_model=UserRead)
@@ -62,6 +75,7 @@ async def save_preferences(
     payload: PreferencesUpdate,
     user_id: str = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
+    email_verified: bool = Depends(get_email_verified),
 ) -> UserRead:
     """Save the account's instructions and response style (FR-24, FR-25).
 
@@ -76,7 +90,7 @@ async def save_preferences(
         instructions=payload.instructions,
         response_style=payload.response_style,
     )
-    return UserRead.model_validate(updated)
+    return _payload(updated, email_verified=email_verified)
 
 
 @router.get("/auth/providers", response_model=SocialProvidersRead)
