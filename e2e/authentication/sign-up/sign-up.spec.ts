@@ -18,3 +18,13 @@ test("shows an error when the email already exists", async ({ signUpPage, user, 
   await expect(signUpPage.alert).toBeVisible();
   await expect(page).toHaveURL(/\/authentication\/sign-up$/);
 });
+
+test("refuses a weak password before the account is created", async ({ signUpPage, page }) => {
+  // "password1" is both common and in the breach data (the check itself is off
+  // in this stack, as it is for rate limiting).
+  await signUpPage.goto();
+  await signUpPage.signUp(uniqueEmail(), "password1");
+
+  await expect(signUpPage.alert).toBeVisible();
+  await expect(page).toHaveURL(/\/authentication\/sign-up$/);
+});
