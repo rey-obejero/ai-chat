@@ -6,12 +6,20 @@ export interface ProblemDetails {
   instance?: string
   code?: string
   errors?: unknown
+  /**
+   * The unverified-allowance extension member (ADR-0039): the request was
+   * refused because the account's email is not verified, and verifying it lifts
+   * the refusal. The quota problem is the only one that sets it.
+   */
+  verification_required?: boolean
 }
 
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly details?: unknown
+  /** See `ProblemDetails.verification_required` (ADR-0039). */
+  readonly verificationRequired: boolean
 
   constructor(problem: ProblemDetails) {
     super(problem.detail ?? problem.title)
@@ -19,6 +27,7 @@ export class ApiError extends Error {
     this.status = problem.status
     this.code = problem.code ?? 'UNKNOWN'
     this.details = problem.errors
+    this.verificationRequired = problem.verification_required === true
   }
 }
 

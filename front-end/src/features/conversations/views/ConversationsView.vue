@@ -13,7 +13,7 @@ import IconSearch from '~icons/lucide/search'
 
 import RootLayout from '@/components/layouts/RootLayout.vue'
 import SidebarGroup from '@/components/layouts/SidebarGroup.vue'
-import { useSessionStore } from '@/features/auth'
+import { needsVerification, useSessionStore, VerificationNudge } from '@/features/auth'
 import { SettingsDialog, type SettingsSection } from '@/features/settings'
 import { displayNameOf } from '@/lib/display-name'
 import { listMessages, listModels, type Conversation, type ModelInfo } from '../api'
@@ -114,6 +114,12 @@ const busy = computed(() => {
 // there is nothing in the list yet to show for the request.
 const working = computed(() => chat.status.value === 'submitted')
 const errorMessage = computed(() => (chat.error.value ? describeError(chat.error.value) : ''))
+/**
+ * The unverified-allowance block reads its own way out — verify, or ask for
+ * another mail — so it replaces the plain quota copy rather than joining it
+ * (ADR-0039).
+ */
+const verificationRequired = computed(() => needsVerification(chat.error.value))
 const canSend = computed(() => draft.value.trim().length > 0 && !busy.value && !hydrating.value)
 
 const activeId = computed({
@@ -524,8 +530,9 @@ async function signOut(): Promise<void> {
           @edit="editMessage"
           @regenerate="regenerateMessage"
         />
+        <VerificationNudge v-if="verificationRequired" />
         <p
-          v-if="errorMessage"
+          v-else-if="errorMessage"
           role="alert"
           class="mx-auto mt-4 max-w-3xl text-body-sm text-subtext"
         >

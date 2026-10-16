@@ -54,6 +54,16 @@ const router = createRouter({
       meta: { title: 'Set a New Password', requiresAuth: false },
     },
     {
+      // The path is fixed by the verification mail's template, which builds its
+      // link as `{website_base_path}/verify-email` with the token in the query —
+      // the same convention as reset-password above, and the same reason the
+      // route is public.
+      path: '/authentication/verify-email',
+      name: 'verify-email',
+      component: () => import('@/features/auth').then((m) => m.VerifyEmailView),
+      meta: { title: 'Verify Email', requiresAuth: false },
+    },
+    {
       // No component: a grouping route. `meta` is merged into every child, so
       // one `requiresAuth` covers the whole authenticated surface, including
       // routes added later.

@@ -7,10 +7,11 @@ import PrimeVue from 'primevue/config'
 import type { MenuItem } from 'primevue/menuitem'
 import Tooltip from 'primevue/tooltip'
 import { createPinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, type PropType } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { defineComponent, ref, type PropType, type Ref } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
+import { ApiError } from '@/lib/api'
 import {
   createConversation,
   deleteConversation,
@@ -38,12 +39,40 @@ vi.mock('@/features/conversations/api', () => ({
 /**
  * The session the view reads the account from, mutable so a test can hand the
  * view an account that has not answered the name prompt or carries no name.
+ * The store is mocked rather than the feature's `index.ts`, so the rest of what
+ * the feature exports — the verification nudge among it — stays real.
  */
 const auth = vi.hoisted(() => ({
   user: { display_name: 'Ada Lovelace', email: 'ada@example.com', name_prompt_seen: true },
   signOut: vi.fn(),
 }))
-vi.mock('@/features/auth', () => ({ useSessionStore: () => auth }))
+vi.mock('@/features/auth/stores/session', () => ({ useSessionStore: () => auth }))
+
+/** The chat the view drives, as `useChat` hands it over. */
+interface ChatStub {
+  messages: Ref<UIMessage[]>
+  error: Ref<unknown>
+  status: Ref<string>
+  sendMessage: Mock
+  stop: Mock
+  regenerate: Mock
+}
+
+/**
+ * `useChat` is replaced so a test can hand the view a refused turn's problem —
+ * the one thing that shows the allowance block's own copy — without a transport.
+ * The values are refs, because the view derives its rendered copy from them.
+ */
+const chat: ChatStub = {
+  messages: ref<UIMessage[]>([]),
+  error: ref<unknown>(undefined),
+  status: ref('ready'),
+  sendMessage: vi.fn(),
+  stop: vi.fn(),
+  regenerate: vi.fn(),
+}
+
+vi.mock('@ai-sdk/vue', () => ({ useChat: () => chat }))
 
 /** The popup teleports its items to the body; rendering them in place is clickable. */
 const MenuStub = defineComponent({
@@ -218,6 +247,9 @@ function transcript(wrapper: VueWrapper): UIMessage[] {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  chat.messages.value = []
+  chat.error.value = undefined
+  chat.status.value = 'ready'
   auth.user = { display_name: 'Ada Lovelace', email: 'ada@example.com', name_prompt_seen: true }
   listMock.mockResolvedValue(page([conversation({ id: 'c1', title: 'First' })]))
   listMessagesMock.mockResolvedValue([])
@@ -481,5 +513,40 @@ describe('ConversationsView name prompt', () => {
     const { wrapper } = await mountView()
 
     expect(wrapper.findComponent(NamePromptDialog).exists()).toBe(true)
+  })
+})
+
+describe('ConversationsView allowance block', () => {
+  it('answers the unverified block with the nudge, not the quota copy', async () => {
+    // What an account that has spent the reduced allowance is refused with
+    // (ADR-0039): the quota problem, carrying the flag that says verifying the
+    // email would lift it.
+    chat.error.value = new ApiError({
+      type: 'about:blank',
+      title: 'Too Many Requests',
+      status: 429,
+      code: 'QUOTA_EXCEEDED',
+      verification_required: true,
+    })
+
+    const { wrapper } = await mountView('/application/conversations/c1')
+
+    expect(wrapper.text()).toContain('Verify your email to unlock the full allowance')
+    expect(wrapper.text()).toContain('Resend verification email')
+    expect(wrapper.text()).not.toContain('You have used your token quota for this period')
+  })
+
+  it('keeps the quota copy for a block verification would not lift', async () => {
+    chat.error.value = new ApiError({
+      type: 'about:blank',
+      title: 'Too Many Requests',
+      status: 429,
+      code: 'QUOTA_EXCEEDED',
+    })
+
+    const { wrapper } = await mountView('/application/conversations/c1')
+
+    expect(wrapper.text()).toContain('You have used your token quota for this period')
+    expect(wrapper.text()).not.toContain('Resend verification email')
   })
 })
