@@ -348,6 +348,15 @@ Save is the section's Primary Button. It is disabled while nothing differs from 
 
 The section is the anchor the account menu's **Personalization** item opens the dialog at, and the dialog scrolls it into view rather than leaving the reader to find it.
 
+### Name Field
+**Role:** The account's name (FR-7), in the settings dialog's Profile section and in the first-run prompt.
+
+The **Text Input** treatment — Paper White fill, 1px Line border, 12px radius and Ink text — with a 50-character cap. The cap is `maxlength` rather than the Personalization Section's counter: a name is short enough that a value the API would refuse cannot be typed, and a counter on every account's own name would be noise. The field is prefilled with the name the account already has — the one derived from the email, on a first sign-in — so both the prompt's actions answer a value the reader can see rather than a blank.
+
+A name the API refuses, or a value that could not be saved at all, is stated on a line below the field at body-sm in Danger; a whitespace-only value is refused by the field itself, in the same place and the same treatment, because the API would refuse it too. Editing retires the message. Like the Personalization Section, the field never reports success by colour alone: `Saved.` is written in Subtext beside the Save action.
+
+The prompt is that field in a Dialog, under the heading 'What should we call you?', with Save as its Primary Button and Skip as a Tertiary one. The dialog carries no close control, and Escape and a click on the mask do nothing: dismissing it without answering would leave the prompt to return on the next sign-in, so Save and Skip are the only ways out.
+
 ## Accessibility
 
 Text contrast clears WCAG AA: Ink (#171717) and Onyx (#000000) exceed 4.5:1 on Paper White and Canvas; Tertiary (#3d3d3d) exceeds 9:1; large text (24px and above) clears 3:1; Danger (#b91c1c) clears 4.5:1 on both.
