@@ -5,7 +5,6 @@ import IconBlocks from '~icons/lucide/blocks'
 import IconCirclePlus from '~icons/lucide/circle-plus'
 import IconLibrary from '~icons/lucide/library'
 import IconMessageCircleDashed from '~icons/lucide/message-circle-dashed'
-import IconSearch from '~icons/lucide/search'
 import IconSidebar from '~icons/lucide/sidebar'
 import IconSparkles from '~icons/lucide/sparkles'
 
@@ -21,9 +20,10 @@ const collapsed = defineModel<boolean>('collapsed', { required: true })
 const emit = defineEmits<{ newConversation: [] }>()
 
 // The sidebar rows are a fixed list, so they are written out rather than mapped.
-// Only "New conversation" is wired; the rest are inert by design.
-const INERT = ['Search', 'Plugins', 'Skills', 'Library']
-const INERT_ICONS = [IconSearch, IconBlocks, IconSparkles, IconLibrary]
+// Only "New conversation" is wired; the rest are inert by design. "Search" is
+// the one row the view fills — see the `search` slot below.
+const INERT = ['Plugins', 'Skills', 'Library']
+const INERT_ICONS = [IconBlocks, IconSparkles, IconLibrary]
 </script>
 
 <template>
@@ -90,6 +90,9 @@ const INERT_ICONS = [IconSearch, IconBlocks, IconSparkles, IconLibrary]
           v-tooltip="{ value: collapsed ? 'New conversation' : null, class: 'text-body-sm' }"
           @select="emit('newConversation')"
         />
+        <!-- The Search row is the view's to fill: it carries a real field where
+             there is something to search. -->
+        <slot name="search" :collapsed="collapsed" />
         <NavItem
           v-for="(label, index) in INERT"
           :key="label"

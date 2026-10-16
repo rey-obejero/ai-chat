@@ -175,6 +175,52 @@ test("regenerates a reply without duplicating the turn", async ({ signUpPage, pa
   await expect(transcript.getByText("regenerate me", { exact: true })).toHaveCount(1);
 });
 
+test("searches, renames and deletes a conversation", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+
+  for (const text of ["alpha note", "beta note"]) {
+    // The header carries its own New conversation button once a conversation is
+    // open, so scope to the sidebar.
+    await page.getByRole("navigation").getByRole("button", { name: "New conversation" }).click();
+    await page.getByRole("textbox", { name: "Message" }).fill(text);
+    const send = page.getByRole("button", { name: "Send" });
+    await expect(send).toBeEnabled();
+    await send.click();
+    await expect(
+      page.getByRole("log").getByText(`Mock reply: ${text}`, { exact: true }),
+    ).toBeVisible();
+  }
+
+  // Search narrows the sidebar to matching conversations.
+  const search = page.getByRole("textbox", { name: "Search conversations" });
+  await search.fill("alpha");
+  await expect(page.getByRole("button", { name: "alpha note" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "beta note" })).toHaveCount(0);
+  await search.press("Escape");
+  await expect(page.getByRole("button", { name: "beta note" })).toBeVisible();
+
+  // Rename inline from the row's context menu.
+  const row = page.locator("li", { has: page.getByRole("button", { name: "beta note" }) });
+  await row.hover();
+  await row.getByRole("button", { name: "Conversation actions" }).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
+  // The title button is replaced by the input, so the row locator above no
+  // longer matches; address the field by its own label.
+  const renameInput = page.getByRole("textbox", { name: "Conversation title" });
+  await renameInput.fill("renamed beta");
+  await renameInput.press("Enter");
+  await expect(page.getByRole("button", { name: "renamed beta" })).toBeVisible();
+
+  // Delete asks first, then removes the row.
+  const renamedRow = page.locator("li", { has: page.getByRole("button", { name: "renamed beta" }) });
+  await renamedRow.hover();
+  await renamedRow.getByRole("button", { name: "Conversation actions" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("button", { name: "renamed beta" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "alpha note" })).toBeVisible();
+});
+
 test("edits a user message without duplicating turns", async ({ signUpPage, page }) => {
   await signUpFreshAccount(signUpPage);
 

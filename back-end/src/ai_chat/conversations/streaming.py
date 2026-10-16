@@ -216,11 +216,21 @@ async def _persist_assistant_message(
             )
         )
         try:
+            # Flushed before the stamp, so a write that cannot land (a duplicate
+            # key, or a conversation deleted mid-stream) fails here and is
+            # handled below, rather than surfacing from `touch_activity`.
+            await session.flush()
+            # The reply is the conversation's most recent activity, so the list
+            # still orders by the last thing said.
+            await service.touch_activity(session, conversation_id)
             await session.commit()
         except IntegrityError:
-            # The same logical write already landed; keep the stored one (H3).
+            # Either the same logical write already landed (H3), or the
+            # conversation was deleted while this reply streamed and the row has
+            # nothing left to belong to (ADR-0052). The client has the text
+            # either way, so this is not an error part.
             await session.rollback()
-            logger.info("Duplicate reply write for conversation %s", conversation_id)
+            logger.info("Reply for conversation %s was not stored", conversation_id)
 
 
 async def _record_usage(

@@ -1,4 +1,5 @@
 import PrimeVue from 'primevue/config'
+import ConfirmationService from 'primevue/confirmationservice'
 import Tooltip from 'primevue/tooltip'
 import { createPinia } from 'pinia'
 import SuperTokens from 'supertokens-web-js'
@@ -23,6 +24,8 @@ export function setupSuperTokens(): void {
 export function installProviders(app: App): void {
   app.use(createPinia())
   app.directive('tooltip', Tooltip)
+  // The delete confirmation is the only thing that asks for it (ConversationsView).
+  app.use(ConfirmationService)
   app.use(PrimeVue, {
     theme: {
       preset: AiChatPreset,

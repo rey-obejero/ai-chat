@@ -23,5 +23,5 @@ async def test_conversations_are_isolated_per_user(app, client, session_factory)
     response = await client.get("/api/v1/conversations")
 
     assert response.status_code == 200
-    titles = [item["title"] for item in response.json()]
+    titles = [item["title"] for item in response.json()["items"]]
     assert titles == ["Mine"]

@@ -192,14 +192,17 @@ A Link is not a button: it has no surface of its own to fill on hover, only a co
 ### Nav Item
 **Role:** A row in the side navigation, such as 'New conversation', 'Search' or 'Library'.
 
-A full-width row with an 8px border radius and 14px GeistSans label, preceded by a 16px Icon (#7d7d7d) glyph. Two variants share the geometry:
+A full-width row with an 8px border radius and 14px GeistSans label, preceded by a 16px Icon (#7d7d7d) glyph. Three variants share the geometry:
 
 - **Plain** — transparent at rest, fills with Line at 40% on hover, and takes the Selected state when it represents the current location.
 - **Filled** — Line at 40% at rest, darkening to Line at 60% on hover. Reserved for the single standing action at the top of the navigation, such as 'New conversation'.
+- **Search** — the row carries a real `<input>` where the label would be, so 'Search' is a field rather than a row that opens one. It is a Plain row at rest and takes the Text Input treatment once it holds focus (Paper White fill, 1px Line edge, Ink text) with the search glyph as its leading icon; the focus ring follows the row, because the row is the control. The placeholder is 'Search' and the accessible name is 'Search conversations'.
 
 When the navigation collapses, the label leaves the visual layout but stays in the accessibility tree as `sr-only` — a row must never lose its accessible name. The glyph centers, and a tooltip supplies the label on hover.
 
-A collapsed rail carries navigation only. Grouped lists need the width their labels do, so the groups are removed rather than truncated. The rail gets no separate expand button: a 64px header row cannot hold the logo and the toggle at once without squashing the glyph, so the toggle takes the logo's place and appears on hover or keyboard focus. Either way the toggle is a Tertiary Button and a circle.
+A row may also carry a **trailing action slot**: a single 24×24px Icon Button at the end of the row, invisible at rest and revealed on hover or keyboard focus anywhere in the row (`:hover` / `:focus-within`, never `group-*`, which is inert in this build), exactly as Message Actions reveals its row. It keeps its space whether or not it is visible, so revealing it moves nothing, and it stays keyboard-reachable at rest so focus can bring it into view. Conversation Row below is the worked example.
+
+A collapsed rail carries navigation only. Grouped lists need the width their labels do, so the groups are removed rather than truncated; the Search row goes with them, since a 64px row cannot hold a field. The rail gets no separate expand button: a 64px header row cannot hold the logo and the toggle at once without squashing the glyph, so the toggle takes the logo's place and appears on hover or keyboard focus. Either way the toggle is a Tertiary Button and a circle.
 
 ### Group Header
 **Role:** A collapsible heading above a run of navigation rows, such as 'Projects' or 'Recents'.
@@ -207,6 +210,18 @@ A collapsed rail carries navigation only. Grouped lists need the width their lab
 A 14px label in Subtext (#666666) at 400 weight — the same size as the navigation rows it heads, kept quiet by color rather than by being made smaller. It darkens to Ink (#171717) on hover. A 12px chevron follows the label, 6px after it, and rotates a quarter turn when the group is open. The chevron is not shown at rest: it appears on hover or keyboard focus, so a collapsed group does not advertise itself in the resting state.
 
 The header is a real button carrying `aria-expanded`, not a heading element: the global h1–h3 rule sets weight 600, which a 14px label must not inherit. Collapsed state is remembered per group. A group that is open must still be reachable by keyboard, and its rows stay in the accessibility tree order the header implies.
+
+### Conversation Row
+**Role:** A conversation in the sidebar's Pinned, Recents or Archived group.
+
+The nav row's geometry — 8px radius, 10px/8px padding, title at 14px — with the row itself as the hover and selection target and the title a plain button inside it, so the trailing action has somewhere to sit. Plain at rest (transparent, darkening to Ink on hover), Line at 40% on hover, and the Selected state — Line at 60% with the title at 500 weight — for the conversation currently open.
+
+- **Favourite badge** — a 12px star glyph in Icon (#7d7d7d) after the title, carrying the accessible name 'Favourite'. It is a badge and not a control: the menu is where the state changes.
+- **Archived** — the title is set in Subtext (#666666), the row sits in the Archived group whose header names the state, and the title also carries '(archived)' in `sr-only` so the row's own accessible name does not depend on color.
+- **Menu trigger** — the Nav Item trailing action slot: a 24×24px Icon Button with a 16px '…' glyph, the accessible name 'Conversation actions' and a tooltip. It opens Rename, Pin/Unpin, Add to favourites/Remove from favourites, Archive/Unarchive, then a rule, then Delete.
+- **Rename** — swaps the title for a Text Input at 14px inside the row. Enter saves, Escape cancels, and a blank or unchanged title closes the field without a write. When the field closes, focus returns to the row's title.
+
+A list with more pages behind it ends with a 'Load more' row in the Group Header treatment: 14px in Subtext, darkening to Ink on hover.
 
 ### Composer Card
 **Role:** The message input surface, such as the chat composer.
@@ -283,6 +298,8 @@ One model is served: `llm_model` is a single server setting, so 'Auto' is curren
 **Role:** Single-line text entry.
 
 Paper White (#ffffff) fill with a 1px Line (#eaeaea) border and a 12px radius. Ink (#171717) text with a Subtext (#666666) placeholder. Padding is 8px vertically and 12px horizontally. On focus, the border becomes Ink and the standard focus ring applies. A placeholder may carry the field's purpose, but the field still requires an accessible name.
+
+The sidebar's search field (see Nav Item) is the one Text Input that is not a Paper White box at rest: it wears the nav row's geometry until it holds focus, and only then takes the fill and the Line edge above, so the sidebar keeps a single row shape. Its term is queried on the server after a 250ms debounce rather than filtered locally, so while it is in flight the previous rows stay on screen; a term with no matches states 'No matches' rather than showing an empty list. Escape clears the term. The inline rename on a Conversation Row is this component too, at 14px on the row.
 
 ### Password Input
 **Role:** Text input for secrets, with a visibility toggle.

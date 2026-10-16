@@ -1,14 +1,16 @@
 import uuid
 
 from fastapi import APIRouter, Body, Depends, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ai_chat.auth import get_current_user_id
 from ai_chat.conversations.models import ASSISTANT_ROLE, USER_ROLE, Conversation, Message
 from ai_chat.conversations.schemas import (
+    ConversationPage,
     ConversationRead,
+    ConversationUpdate,
     MessageCreate,
     MessageEdit,
     MessageRead,
@@ -18,14 +20,16 @@ from ai_chat.conversations.service import (
     add_message,
     begin_generation,
     create_conversation,
+    delete_conversation,
     find_message_by_client_id,
     find_owned_message,
     get_owned_conversation,
     get_owned_message,
-    list_conversations,
     list_messages,
     replace_content,
+    search_conversations,
     truncate_after,
+    update_conversation,
 )
 from ai_chat.conversations.streaming import (
     build_history,
@@ -46,13 +50,30 @@ from ai_chat.usage import enforce_quota
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
-@router.get("", response_model=list[ConversationRead])
+@router.get("", response_model=ConversationPage)
 async def read_conversations(
+    q: str | None = None,
+    include_archived: bool = False,
+    cursor: str | None = None,
     user_id: str = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
-) -> list[ConversationRead]:
-    rows = await list_conversations(session, user_id)
-    return [ConversationRead.model_validate(row) for row in rows]
+) -> ConversationPage:
+    """The sidebar's list: searchable, pinned first, one cursor page at a time.
+
+    ``include_archived`` brings archived rows back; without it they are left
+    out of the list and of a search alike (FR-17).
+    """
+    page = await search_conversations(
+        session,
+        user_id,
+        query=q,
+        include_archived=include_archived,
+        cursor=cursor,
+    )
+    return ConversationPage(
+        items=[ConversationRead.model_validate(row) for row in page.items],
+        next_cursor=page.next_cursor,
+    )
 
 
 @router.post("", response_model=ConversationRead, status_code=status.HTTP_201_CREATED)
@@ -62,6 +83,47 @@ async def new_conversation(
 ) -> ConversationRead:
     conversation = await create_conversation(session, user_id)
     return ConversationRead.model_validate(conversation)
+
+
+@router.patch("/{conversation_id}", response_model=ConversationRead)
+async def edit_conversation(
+    conversation_id: uuid.UUID,
+    payload: ConversationUpdate,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> ConversationRead:
+    """Rename a conversation, or move it between pinned/favourite/archived (FR-16).
+
+    A partial update: the fields that are absent keep their value. This is not
+    a streaming write, so it does not take the generation gate (ADR-0052) — it
+    touches no message and cannot interleave with a reply's transcript.
+    """
+    conversation = await get_owned_conversation(session, user_id, conversation_id)
+    updated = await update_conversation(
+        session,
+        conversation,
+        title=payload.title,
+        is_pinned=payload.is_pinned,
+        is_favourite=payload.is_favourite,
+        is_archived=payload.is_archived,
+    )
+    return ConversationRead.model_validate(updated)
+
+
+@router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_conversation(
+    conversation_id: uuid.UUID,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Delete a conversation and its transcript; a second call is a 404 (FR-16).
+
+    Deliberately not gated: a stream running against this conversation finds
+    its row gone, keeps nothing, and its cleanup still succeeds (ADR-0052).
+    """
+    conversation = await get_owned_conversation(session, user_id, conversation_id)
+    await delete_conversation(session, conversation)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{conversation_id}/messages", response_model=list[MessageRead])
