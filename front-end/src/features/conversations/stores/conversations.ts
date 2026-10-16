@@ -111,8 +111,8 @@ export const useConversationsStore = defineStore('conversations', () => {
     await load()
   }
 
-  async function create(): Promise<Conversation> {
-    const created = await createConversation()
+  async function create(model?: string): Promise<Conversation> {
+    const created = await createConversation(model)
     apply([created, ...conversations.value])
     return created
   }
@@ -139,6 +139,14 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   function rename(id: string, title: string): Promise<boolean> {
     return update(id, { title: title.trim() })
+  }
+
+  /**
+   * Point a conversation at another model (FR-23). The server persists the
+   * switch as a system message; the view shows the matching caption.
+   */
+  function setModel(id: string, model: string): Promise<boolean> {
+    return update(id, { model })
   }
 
   function togglePin(id: string): Promise<boolean> {
@@ -201,6 +209,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     search,
     create,
     rename,
+    setModel,
     togglePin,
     toggleFavourite,
     toggleArchive,

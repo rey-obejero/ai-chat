@@ -20,6 +20,10 @@ from ai_chat.shared.db import Base
 
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
+# A transcript-level notice rather than a turn: today it is the model-switch
+# caption (FR-23), which the interface renders as a centred caption and the
+# provider receives as a system message.
+SYSTEM_ROLE = "system"
 
 # The column's width and the rename rule's limit are the same number.
 TITLE_MAX_LENGTH = 255
@@ -45,6 +49,11 @@ class Conversation(Base):
         String(255), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     title: Mapped[str] = mapped_column(String(TITLE_MAX_LENGTH), default="New conversation")
+    # The model this conversation's replies go to (FR-23). Nullable: without a
+    # choice the deployment's default applies, which is the picker's "Auto".
+    # The value is checked against the served list at request time, never here
+    # — the list is configuration and can change under a stored row (M5).
+    model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # The three presentation states (FR-17). Each changes only how the list
     # shows a row, so each is a plain flag rather than a date or a status enum.
     is_pinned: Mapped[bool] = mapped_column(
@@ -76,7 +85,7 @@ class Conversation(Base):
 
 class Message(Base):
     __tablename__ = "messages"
-    # Structural idempotency (ADR-0050): a retried write carries the same
+    # Structural idempotency (ADR-0052): a retried write carries the same
     # client-generated key and hits this constraint instead of duplicating a row.
     # The key names one logical turn, so it is scoped by role: an edit keys its
     # reply with the key of the user turn it rewrites, which is what makes a

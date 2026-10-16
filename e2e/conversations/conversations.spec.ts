@@ -276,3 +276,23 @@ test("opens the command palette on a slash and inserts without sending", async (
   // Nothing reached the provider.
   await expect(page.getByRole("log").getByText(/^Mock reply/)).toHaveCount(0);
 });
+
+test("switches the model and discloses the switch", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+  await page.getByRole("button", { name: "New conversation" }).click();
+
+  await page.getByRole("textbox", { name: "Message" }).fill("pick a model");
+  const send = page.getByRole("button", { name: "Send" });
+  await expect(send).toBeEnabled();
+  await send.click();
+
+  const transcript = page.getByRole("log");
+  await expect(transcript.getByText("Mock reply: pick a model", { exact: true })).toBeVisible();
+
+  // The picker names the model in force and lists the served set.
+  await page.getByRole("button", { name: /e2e\/mock/ }).click();
+  await page.getByRole("menuitem", { name: /e2e\/mock-alt/ }).click();
+
+  // The switch is disclosed in the transcript, never silent.
+  await expect(transcript.getByText(/Model set to/)).toBeVisible();
+});

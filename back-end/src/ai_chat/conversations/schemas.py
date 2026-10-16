@@ -11,11 +11,24 @@ class ConversationRead(BaseModel):
 
     id: uuid.UUID
     title: str
+    # The conversation's own model choice, or `None` for the deployment default
+    # (FR-23). It is the stored choice, not the effective model: a stored id the
+    # deployment stopped serving is reported as it is and replaced on the next
+    # reply, where the replacement is disclosed (M5).
+    model: str | None
     is_pinned: bool
     is_favourite: bool
     is_archived: bool
     created_at: datetime
     last_activity_at: datetime
+
+
+class ConversationCreate(BaseModel):
+    """A new conversation, optionally pinned to a served model (FR-23)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model: str | None = None
 
 
 class ConversationPage(BaseModel):
@@ -30,16 +43,17 @@ class ConversationPage(BaseModel):
 
 
 class ConversationUpdate(BaseModel):
-    """A partial update: only the fields sent change (FR-11, FR-16, FR-17)."""
+    """A partial update: only the fields sent change (FR-11, FR-16, FR-17, FR-23)."""
 
     model_config = ConfigDict(extra="forbid")
 
     title: str | None = None
+    model: str | None = None
     is_pinned: bool | None = None
     is_favourite: bool | None = None
     is_archived: bool | None = None
 
-    @field_validator("title", "is_pinned", "is_favourite", "is_archived", mode="before")
+    @field_validator("title", "model", "is_pinned", "is_favourite", "is_archived", mode="before")
     @classmethod
     def _reject_null(cls, value: object, info: ValidationInfo) -> object:
         # A field is absent or it carries a value. An explicit `null` is a
@@ -62,7 +76,7 @@ class ConversationUpdate(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=8000)
-    # A client-generated key for one logical write (ADR-0050, H3). Retrying a
+    # A client-generated key for one logical write (ADR-0052, H3). Retrying a
     # send with the same key cannot duplicate the message.
     client_id: uuid.UUID | None = None
 

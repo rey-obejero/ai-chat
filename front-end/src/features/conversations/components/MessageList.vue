@@ -21,30 +21,38 @@ const emit = defineEmits<{
     aria-live="polite"
     class="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end gap-6"
   >
-    <div
-      v-for="message in messages"
-      :key="message.id"
-      class="turn flex flex-col gap-1.5"
-      :class="message.role === 'user' ? 'items-end' : 'items-start'"
-    >
-      <span
-        class="text-caption uppercase tracking-wide text-subtext"
-        :class="message.role === 'user' ? 'text-right' : ''"
+    <template v-for="message in messages" :key="message.id">
+      <!-- A system message is not a turn: it reports what the transcript did, so
+           it takes no role label, no actions and no hover reveal, and it is
+           centred in the column as a Subtext caption (DESIGN.md — Conversation
+           Turn). -->
+      <div v-if="message.role === 'system'" class="flex flex-col items-center">
+        <MessageContent role="system" :text="messageText(message)" />
+      </div>
+      <div
+        v-else
+        class="turn flex flex-col gap-1.5"
+        :class="message.role === 'user' ? 'items-end' : 'items-start'"
       >
-        {{ message.role === 'user' ? 'You' : 'Assistant' }}
-      </span>
-      <MessageContent
-        :role="message.role === 'user' ? 'user' : 'assistant'"
-        :text="messageText(message)"
-      />
-      <MessageActions
-        :message="message"
-        :role="message.role === 'user' ? 'user' : 'assistant'"
-        @quote="emit('quote', message)"
-        @edit="emit('edit', message)"
-        @regenerate="emit('regenerate', message)"
-      />
-    </div>
+        <span
+          class="text-caption uppercase tracking-wide text-subtext"
+          :class="message.role === 'user' ? 'text-right' : ''"
+        >
+          {{ message.role === 'user' ? 'You' : 'Assistant' }}
+        </span>
+        <MessageContent
+          :role="message.role === 'user' ? 'user' : 'assistant'"
+          :text="messageText(message)"
+        />
+        <MessageActions
+          :message="message"
+          :role="message.role === 'user' ? 'user' : 'assistant'"
+          @quote="emit('quote', message)"
+          @edit="emit('edit', message)"
+          @regenerate="emit('regenerate', message)"
+        />
+      </div>
+    </template>
 
     <div v-if="working" role="status" class="flex items-center gap-2 text-body-sm text-subtext">
       <span class="h-2 w-2 animate-pulse rounded-full bg-ink/40 motion-reduce:animate-none" />

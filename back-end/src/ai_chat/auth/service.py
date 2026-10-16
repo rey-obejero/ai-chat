@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_chat.auth.adapter_supertokens import get_email
 from ai_chat.auth.models import User
+from ai_chat.llm import ResponseStyle
 
 
 async def get_or_create_user(session: AsyncSession, user_id: str) -> User:
@@ -25,5 +26,27 @@ async def get_or_create_user(session: AsyncSession, user_id: str) -> User:
             raise
         return user
 
+    await session.refresh(user)
+    return user
+
+
+async def update_preferences(
+    session: AsyncSession,
+    user: User,
+    *,
+    instructions: str | None = None,
+    response_style: ResponseStyle | None = None,
+) -> User:
+    """Apply a partial update of the account's personalisation (FR-24, FR-25).
+
+    ``None`` means "leave this field alone", so the schema's trimming decides
+    what an empty instruction means: clearing it. The column is nullable, and
+    "no instructions" has one representation, not two.
+    """
+    if instructions is not None:
+        user.instructions = instructions or None
+    if response_style is not None:
+        user.response_style = str(response_style)
+    await session.commit()
     await session.refresh(user)
     return user

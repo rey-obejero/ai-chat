@@ -38,6 +38,7 @@ function conversation(overrides: Partial<Conversation> & { id: string }): Conver
     is_pinned: false,
     is_favourite: false,
     is_archived: false,
+    model: null,
     last_activity_at: '2026-01-01T00:00:00Z',
     ...overrides,
   }

@@ -1,11 +1,15 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 
 import ApiKeyField from '@/features/settings/components/ApiKeyField.vue'
 import ProviderSection from '@/features/settings/components/ProviderSection.vue'
 import SettingsDialog from '@/features/settings/components/SettingsDialog.vue'
+
+// jsdom defines no scrollIntoView, and the dialog's anchor scrolling calls it.
+const scrollIntoView = vi.fn()
+Element.prototype.scrollIntoView = scrollIntoView
 
 const RadioButtonStub = defineComponent({
   name: 'RadioButton',
@@ -33,7 +37,7 @@ function mountProvider() {
 }
 
 describe('SettingsDialog', () => {
-  it('renders the Usage and Provider sections', () => {
+  it('renders the Personalization, Usage and Provider sections, anchored', () => {
     const wrapper = mount(SettingsDialog, {
       props: { modelValue: true },
       global: {
@@ -42,14 +46,43 @@ describe('SettingsDialog', () => {
           Dialog: { template: '<div><slot /></div>' },
           UsagePanel: true,
           ProviderSection: true,
+          PersonalizationSection: true,
         },
       },
     })
 
+    expect(wrapper.text()).toContain('Personalization')
     expect(wrapper.text()).toContain('Usage')
     expect(wrapper.text()).toContain('Provider')
+    expect(wrapper.find('personalization-section-stub').exists()).toBe(true)
     expect(wrapper.find('usage-panel-stub').exists()).toBe(true)
     expect(wrapper.find('provider-section-stub').exists()).toBe(true)
+    // The account menu names this section, so it carries the id the dialog looks up.
+    expect(wrapper.find('#settings-personalization').exists()).toBe(true)
+  })
+
+  it('brings the named section into view when it opens for one', async () => {
+    scrollIntoView.mockClear()
+    // Attached, because the dialog finds its section by id in the document.
+    const wrapper = mount(SettingsDialog, {
+      props: { modelValue: false, section: 'personalization' },
+      attachTo: document.body,
+      global: {
+        plugins: [createPinia()],
+        stubs: {
+          Dialog: { template: '<div><slot /></div>' },
+          UsagePanel: true,
+          ProviderSection: true,
+          PersonalizationSection: true,
+        },
+      },
+    })
+
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
+    wrapper.unmount()
   })
 })
 

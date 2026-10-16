@@ -1,5 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises'
 
+import type { UIMessage } from 'ai'
 import { flushPromises, mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import ConfirmationService from 'primevue/confirmationservice'
 import PrimeVue from 'primevue/config'
@@ -11,12 +12,17 @@ import { defineComponent, type PropType } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import {
+  createConversation,
   deleteConversation,
   listConversations,
   listMessages,
+  listModels,
+  updateConversation,
   type Conversation,
   type ConversationPage,
+  type ModelInfo,
 } from '@/features/conversations/api'
+import { messageText } from '@/features/conversations/messages'
 import ConversationsView from '@/features/conversations/views/ConversationsView.vue'
 
 vi.mock('@/features/conversations/api', () => ({
@@ -24,6 +30,7 @@ vi.mock('@/features/conversations/api', () => ({
   deleteConversation: vi.fn(),
   listConversations: vi.fn(),
   listMessages: vi.fn(),
+  listModels: vi.fn(),
   updateConversation: vi.fn(),
 }))
 
@@ -52,8 +59,14 @@ const MenuStub = defineComponent({
 // The view focuses and seeds the composer; a bare stub would throw on both.
 const MessageComposerStub = defineComponent({
   name: 'MessageComposer',
-  props: { modelValue: String, disabled: Boolean, busy: Boolean },
-  emits: ['update:modelValue', 'submit', 'stop'],
+  props: {
+    modelValue: String,
+    disabled: Boolean,
+    busy: Boolean,
+    models: { type: Array as PropType<ModelInfo[]>, default: () => [] },
+    model: { type: String as PropType<string | null>, default: null },
+  },
+  emits: ['update:modelValue', 'update:model', 'submit', 'stop'],
   methods: {
     focus(): void {},
     insert(): void {},
@@ -61,9 +74,39 @@ const MessageComposerStub = defineComponent({
   template: '<div class="composer-stub" />',
 })
 
+// The transcript a real MessageList would draw, kept as props so the spec can
+// read the turns the view handed it — the model caption among them.
+const MessageListStub = defineComponent({
+  name: 'MessageList',
+  props: {
+    messages: { type: Array as PropType<UIMessage[]>, default: () => [] },
+    working: Boolean,
+  },
+  template: '<div class="message-list-stub" />',
+})
+
+const SettingsDialogStub = defineComponent({
+  name: 'SettingsDialog',
+  props: {
+    modelValue: Boolean,
+    section: { type: String as PropType<string | null>, default: null },
+  },
+  emits: ['update:modelValue'],
+  template: '<div class="settings-dialog-stub" />',
+})
+
 const listMock = vi.mocked(listConversations)
 const listMessagesMock = vi.mocked(listMessages)
 const deleteMock = vi.mocked(deleteConversation)
+const createMock = vi.mocked(createConversation)
+const updateMock = vi.mocked(updateConversation)
+const modelsMock = vi.mocked(listModels)
+
+/** Two served models, so a switch has somewhere to switch to. */
+const MODELS: ModelInfo[] = [
+  { id: 'model-a', label: 'Model A', is_default: true },
+  { id: 'model-b', label: 'Model B', is_default: false },
+]
 
 const mounted: VueWrapper[] = []
 
@@ -74,6 +117,7 @@ function conversation(overrides: Partial<Conversation> & { id: string }): Conver
     is_pinned: false,
     is_favourite: false,
     is_archived: false,
+    model: null,
     last_activity_at: '2026-01-01T00:00:00Z',
     ...overrides,
   }
@@ -106,9 +150,9 @@ async function mountView(
       stubs: {
         Menu: MenuStub,
         MessageComposer: MessageComposerStub,
-        MessageList: true,
+        MessageList: MessageListStub,
         SuggestionChips: true,
-        SettingsDialog: true,
+        SettingsDialog: SettingsDialogStub,
       },
     },
   })
@@ -138,11 +182,39 @@ function clickDialogButton(button: 'accept' | 'reject'): void {
   document.body.querySelector<HTMLButtonElement>(`.p-confirmdialog-${button}-button`)!.click()
 }
 
+/** Choose a model, as the composer's menu does when one of its items is picked. */
+async function chooseModel(wrapper: VueWrapper, model: string): Promise<void> {
+  wrapper.findComponent(MessageComposerStub).vm.$emit('update:model', model)
+  await flushPromises()
+}
+
+async function clickNewConversation(wrapper: VueWrapper): Promise<void> {
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'New conversation')!
+    .trigger('click')
+  await flushPromises()
+}
+
+async function clickAccountItem(wrapper: VueWrapper, label: string): Promise<void> {
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === label)!
+    .trigger('click')
+  await flushPromises()
+}
+
+/** The transcript the view handed the list, which is where a caption lands. */
+function transcript(wrapper: VueWrapper): UIMessage[] {
+  return wrapper.findComponent(MessageListStub).props('messages') as UIMessage[]
+}
+
 beforeEach(() => {
   vi.resetAllMocks()
   listMock.mockResolvedValue(page([conversation({ id: 'c1', title: 'First' })]))
   listMessagesMock.mockResolvedValue([])
   deleteMock.mockResolvedValue(undefined)
+  modelsMock.mockResolvedValue(MODELS)
 })
 
 afterEach(() => {
@@ -286,5 +358,82 @@ describe('ConversationsView delete', () => {
     expect(deleteMock).toHaveBeenCalledWith('c1')
     expect(router.currentRoute.value.name).toBe('conversations')
     expect(router.currentRoute.value.params.id).toBeUndefined()
+  })
+})
+
+describe('ConversationsView model picker', () => {
+  it('hands the served models and the current model to the composer', async () => {
+    listMock.mockResolvedValue(page([conversation({ id: 'c1', title: 'First', model: 'model-b' })]))
+
+    const { wrapper } = await mountView('/application/conversations/c1')
+
+    const composer = wrapper.findComponent(MessageComposerStub)
+    expect(modelsMock).toHaveBeenCalled()
+    expect(composer.props('models')).toEqual(MODELS)
+    expect(composer.props('model')).toBe('model-b')
+  })
+
+  it('carries a model picked before the first message on the conversation it creates', async () => {
+    createMock.mockResolvedValue(conversation({ id: 'c2', model: 'model-b' }))
+
+    const { wrapper } = await mountView()
+    await chooseModel(wrapper, 'model-b')
+    await clickNewConversation(wrapper)
+
+    expect(createMock).toHaveBeenCalledWith('model-b')
+  })
+
+  it('updates the conversation and discloses the switch once it has started', async () => {
+    updateMock.mockResolvedValue(conversation({ id: 'c1', model: 'model-b' }))
+
+    const { wrapper } = await mountView('/application/conversations/c1')
+    await chooseModel(wrapper, 'model-b')
+
+    expect(updateMock).toHaveBeenCalledWith('c1', { model: 'model-b' })
+
+    const captions = transcript(wrapper)
+      .filter((message) => message.role === 'system')
+      .map((message) => messageText(message))
+    expect(captions).toEqual(['Model set to Model B'])
+  })
+
+  it('writes no caption when the server refuses the switch', async () => {
+    updateMock.mockRejectedValue(new Error('refused'))
+
+    const { wrapper } = await mountView('/application/conversations/c1')
+    await chooseModel(wrapper, 'model-b')
+
+    expect(transcript(wrapper)).toEqual([])
+  })
+
+  it('writes nothing for the model the conversation already has', async () => {
+    listMock.mockResolvedValue(page([conversation({ id: 'c1', title: 'First', model: 'model-b' })]))
+
+    const { wrapper } = await mountView('/application/conversations/c1')
+    await chooseModel(wrapper, 'model-b')
+
+    expect(updateMock).not.toHaveBeenCalled()
+    expect(transcript(wrapper)).toEqual([])
+  })
+})
+
+describe('ConversationsView account menu', () => {
+  it('opens the settings dialog at Personalization', async () => {
+    const { wrapper } = await mountView()
+    expect(wrapper.findComponent(SettingsDialogStub).props('modelValue')).toBe(false)
+
+    await clickAccountItem(wrapper, 'Personalization')
+
+    const dialog = wrapper.findComponent(SettingsDialogStub)
+    expect(dialog.props('modelValue')).toBe(true)
+    expect(dialog.props('section')).toBe('personalization')
+  })
+
+  it('opens the settings dialog from Profile as well', async () => {
+    const { wrapper } = await mountView()
+
+    await clickAccountItem(wrapper, 'Profile')
+
+    expect(wrapper.findComponent(SettingsDialogStub).props('modelValue')).toBe(true)
   })
 })

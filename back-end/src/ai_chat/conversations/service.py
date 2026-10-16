@@ -13,12 +13,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from ai_chat.conversations.exceptions import InvalidCursorError
-from ai_chat.conversations.models import USER_ROLE, Conversation, Message
+from ai_chat.conversations.models import SYSTEM_ROLE, USER_ROLE, Conversation, Message
+from ai_chat.llm import default_model, is_served, model_label, validate_model
 from ai_chat.shared.config import Settings, get_settings
 from ai_chat.shared.exceptions import ConversationBusyError, NotFoundError
 
 DEFAULT_TITLE = "New conversation"
 _TITLE_MAX_LENGTH = 60
+
+# A model change is disclosed in the transcript rather than applied silently
+# (FR-23): one caption names the new model, the other says why an old choice is
+# gone. The wording is content, so it lives here and nowhere else.
+MODEL_CAPTION = "Model set to {label}"
+UNAVAILABLE_MODEL_CAPTION = "{model} is no longer available; using {label}."
 
 # One page of the list. The sidebar shows no pager today, but the endpoint is
 # cursor-paginated, so outgrowing a screenful needs no contract change: one row
@@ -39,8 +46,22 @@ class ConversationPage:
     next_cursor: str | None
 
 
-async def create_conversation(session: AsyncSession, user_id: str) -> Conversation:
-    conversation = Conversation(user_id=user_id)
+async def create_conversation(
+    session: AsyncSession,
+    user_id: str,
+    *,
+    model: str | None = None,
+    settings: Settings | None = None,
+) -> Conversation:
+    """Open a conversation, optionally on one of the served models (FR-23).
+
+    The choice is validated here rather than in the schema, because what is
+    served is configuration and not a fixed list: an id this deployment does
+    not serve is refused now, so a conversation never stores one (M5).
+    """
+    if model is not None:
+        validate_model(settings or get_settings(), model)
+    conversation = Conversation(user_id=user_id, model=model)
     session.add(conversation)
     await session.commit()
     await session.refresh(conversation)
@@ -167,15 +188,18 @@ async def update_conversation(
     conversation: Conversation,
     *,
     title: str | None = None,
+    model: str | None = None,
     is_pinned: bool | None = None,
     is_favourite: bool | None = None,
     is_archived: bool | None = None,
+    settings: Settings | None = None,
 ) -> Conversation:
     """Apply a partial update; ``None`` means "leave this field alone".
 
     Renaming and the three presentation states all land here (FR-11, FR-17).
     None of them is a message, so none of them moves the conversation in the
-    activity ordering.
+    activity ordering. A model change is the exception: it writes the caption
+    that discloses the switch (FR-23).
     """
     if title is not None:
         conversation.title = title
@@ -185,9 +209,66 @@ async def update_conversation(
         conversation.is_favourite = is_favourite
     if is_archived is not None:
         conversation.is_archived = is_archived
+    if model is not None:
+        await change_model(session, conversation, model, settings or get_settings())
     await session.commit()
     await session.refresh(conversation)
     return conversation
+
+
+async def change_model(
+    session: AsyncSession,
+    conversation: Conversation,
+    model: str,
+    settings: Settings,
+) -> None:
+    """Set a conversation's model, disclosing the change in the transcript.
+
+    A silent switch is structurally impossible: the transcript gains a
+    system-role caption naming the new model, so what a reply used stays legible
+    after the fact. Saving the model the conversation already has writes
+    nothing, so a repeated save is not a repeated caption.
+    """
+    validate_model(settings, model)
+    if conversation.model == model:
+        return
+    conversation.model = model
+    await add_message(
+        session,
+        conversation,
+        role=SYSTEM_ROLE,
+        content=MODEL_CAPTION.format(label=model_label(settings, model)),
+    )
+
+
+async def resolve_model(
+    session: AsyncSession,
+    conversation: Conversation,
+    settings: Settings,
+) -> str:
+    """The model this conversation's next reply goes to (FR-23).
+
+    The stored choice wins for as long as the deployment serves it. A choice it
+    no longer serves is never handed to a provider: the default applies, the
+    fallback is disclosed like any other change, and it is persisted — so it is
+    disclosed once, not on every turn (M5).
+    """
+    stored = conversation.model
+    if stored is not None and is_served(settings, stored):
+        return stored
+
+    fallback = default_model(settings)
+    if stored is not None:
+        conversation.model = fallback
+        await add_message(
+            session,
+            conversation,
+            role=SYSTEM_ROLE,
+            content=UNAVAILABLE_MODEL_CAPTION.format(
+                model=stored, label=model_label(settings, fallback)
+            ),
+        )
+    return fallback
 
 
 async def delete_conversation(session: AsyncSession, conversation: Conversation) -> None:

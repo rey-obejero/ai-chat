@@ -63,6 +63,31 @@ async def quota_app(session_factory):
     )
 
 
+# The picker's list is configuration (FR-23), so the only way to prove a second
+# model is offered is to configure a deployment that serves one. Everything
+# else about this app is the ordinary test app.
+@pytest_asyncio.fixture
+async def two_model_app(session_factory):
+    """An app serving `openai/gpt-4o-mini` and `anthropic/claude-haiku`."""
+    return _build_app(
+        session_factory,
+        Settings(
+            _env_file=None,
+            rate_limit_enabled=False,
+            token_quota_enabled=False,
+            llm_model="openai/gpt-4o-mini",
+            llm_models=["openai/gpt-4o-mini", "anthropic/claude-haiku"],
+        ),
+    )
+
+
+@pytest_asyncio.fixture
+async def two_model_client(two_model_app):
+    transport = ASGITransport(app=two_model_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+        yield http_client
+
+
 @pytest_asyncio.fixture
 async def client(app):
     transport = ASGITransport(app=app)

@@ -5,6 +5,7 @@ import {
   deleteConversation,
   listConversations,
   listMessages,
+  listModels,
   updateConversation,
 } from '@/features/conversations/api'
 
@@ -23,6 +24,7 @@ function conversationJson() {
     is_pinned: false,
     is_favourite: false,
     is_archived: false,
+    model: null,
     last_activity_at: '2026-01-01T00:00:00Z',
   }
 }
@@ -49,6 +51,27 @@ describe('conversations api', () => {
     expect(url).toBe('/api/v1/conversations')
     expect(init.method).toBe('POST')
     expect(created.id).toBe('c1')
+  })
+
+  it('carries the model picked before the first message on the create', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(conversationJson(), 201))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await createConversation('model-b')
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.body).toBe(JSON.stringify({ model: 'model-b' }))
+  })
+
+  it('lists the served models', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await listModels()
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/models')
+    expect(init.method ?? 'GET').toBe('GET')
   })
 
   it('lists a page without parameters when nothing is asked for', async () => {

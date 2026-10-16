@@ -1,9 +1,14 @@
 import { apiFetch } from '@/lib/api'
+import type { ResponseStyle } from '@/lib/preferences'
 
 export interface User {
   id: string
   email: string
   created_at: string
+  /** The account's standing instructions, or null when there are none (FR-24). */
+  instructions: string | null
+  /** The style replies are written in (FR-25); `default` adds no prompt text. */
+  response_style: ResponseStyle
 }
 
 export function getMe(): Promise<User> {

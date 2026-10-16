@@ -261,6 +261,8 @@ Both labels are a 10px caption in Subtext (#666666). The transcript is bottom-an
 
 An assistant turn's body is **Markdown Content**; a user turn's body stays literal text, with any fenced block shown as a bare monospace block on the bubble fill.
 
+A **system** message is not a turn: it is a caption, centred in the column and set in Subtext at body-sm, with no role label, no fill and no Message Actions. It reports what the transcript did rather than saying anything — a model switch writes 'Model set to <model>' (FR-23) — and it stays literal, so a model name is never read as Markdown.
+
 ### Message Actions
 **Role:** The action row beneath a conversation turn.
 
@@ -307,7 +309,9 @@ A tooltip supplements rather than replaces the accessible name: the control stil
 
 A Tertiary Button — no fill at rest, filling with Line at 40% on hover, no border, 8px radius — carrying the model name in Ink (#171717) and a 16px Icon chevron. It opens a menu and carries `aria-haspopup`.
 
-One model is served: `llm_model` is a single server setting, so 'Auto' is currently the only entry and the menu is the affordance rather than a working switch. Selecting a different model needs the API to accept one. Until then the control is documented as a shell rather than pretended to be operable.
+The menu lists the models the server serves, labelled as served, with the server's default annotated `(default)` — so a conversation with no choice of its own still says which model will answer. The button names that model; with several served and no choice made it names the default, and with a single served model it reads `Auto`.
+
+The choice belongs to the conversation, not to the account, and it is applied one of two ways. Before the first message it rides on the conversation's creation, so nothing has to be rewritten afterwards. Once the conversation exists, choosing another model updates the conversation and applies from the next reply, and the switch is disclosed by a **system caption** the server persists (see Conversation Turn) — a silent switch is structurally impossible. Choosing the model the conversation already has changes nothing at all: no write, and so no caption. The control is disabled while a reply streams, so the caption never interrupts one, and while no models are served, because then there is nothing to pick.
 
 ### Text Input
 **Role:** Single-line text entry.
@@ -334,6 +338,15 @@ A pill-shaped button (9999px radius) with a Paper White (#ffffff) background and
 A full-width 1px solid border using the Line color (#eaeaea).
 
 **Status:** not in use. The application header draws no rule; see Layout.
+
+### Personalization Section
+**Role:** The account's standing instructions and response style, as a section of the Settings dialog (FR-24, FR-25).
+
+Two fields and a Save. Instructions are a Textarea at the dialog's width, with a character counter on the label row: a mono caption — a technical annotation, which is what GeistMono is for — reading `<used>/<cap>` against the 2000-character cap the API enforces. The field carries `maxlength` for the same cap, so a value the API would refuse cannot be typed. The response style is a Select offering Default, Concise, Detailed, Formal and Casual, opened on the stored value.
+
+Save is the section's Primary Button. It is disabled while nothing differs from the stored value and while a save is in flight, and it takes the Loading state while it runs; a polite `Saved.` in Subtext confirms the write. A refusal from the API states what the API said in Danger, beside the action rather than in a dialog of its own. Editing after either message retires it, because it described a value this one no longer is.
+
+The section is the anchor the account menu's **Personalization** item opens the dialog at, and the dialog scrolls it into view rather than leaving the reader to find it.
 
 ## Accessibility
 

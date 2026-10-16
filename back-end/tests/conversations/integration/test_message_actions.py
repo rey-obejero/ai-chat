@@ -578,6 +578,7 @@ async def test_a_disconnect_keeps_the_partial_and_clears_the_gate(session_factor
         conversation_id=conversation_id,
         user_id="user-1",
         history=[],
+        model="openai/gpt-4o-mini",
         session_factory=session_factory,
         is_disconnected=disconnected,
     )
@@ -614,6 +615,7 @@ async def test_closing_the_stream_keeps_the_partial_and_clears_the_gate(session_
         conversation_id=conversation_id,
         user_id="user-1",
         history=[],
+        model="openai/gpt-4o-mini",
         session_factory=session_factory,
     )
     await anext(events)  # start
