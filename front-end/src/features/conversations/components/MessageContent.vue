@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
+import { copyToClipboard } from '@/lib/clipboard'
+
 import { renderAssistantMarkdown, segmentUserText } from '../markdown'
 
 const props = defineProps<{ role: 'user' | 'assistant'; text: string }>()
@@ -15,33 +17,6 @@ const root = ref<HTMLElement | null>(null)
 const expandedBlocks = new Set<number>()
 let copiedBlock: number | null = null
 let copyTimer: ReturnType<typeof setTimeout> | undefined
-
-/**
- * Copy text, preferring the async Clipboard API and falling back to the legacy
- * `execCommand` path where that API is unavailable — which is any non-secure
- * origin, including the containerized e2e stack's `http://caddy`.
- */
-async function copyToClipboard(text: string): Promise<boolean> {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text)
-      return true
-    } catch {
-      // Fall through to the legacy path.
-    }
-  }
-
-  const area = document.createElement('textarea')
-  area.value = text
-  area.setAttribute('readonly', '')
-  area.style.position = 'fixed'
-  area.style.opacity = '0'
-  document.body.appendChild(area)
-  area.select()
-  const copied = document.execCommand('copy')
-  document.body.removeChild(area)
-  return copied
-}
 
 function applyState(): void {
   const container = root.value

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useChat } from '@ai-sdk/vue'
+import type { UIMessage } from 'ai'
 import Avatar from 'primevue/avatar'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
@@ -15,7 +16,18 @@ import ConversationList from '../components/ConversationList.vue'
 import MessageComposer from '../components/MessageComposer.vue'
 import MessageList from '../components/MessageList.vue'
 import SuggestionChips from '../components/SuggestionChips.vue'
-import { createConversationTransport, describeError, toUIMessages } from '../messages'
+import {
+  beginAppend,
+  buildQuote,
+  conversationAction,
+  createConversationTransport,
+  describeError,
+  messageClientId,
+  messageText,
+  resetConversationAction,
+  setConversationAction,
+  toUIMessages,
+} from '../messages'
 import { useConversationsStore } from '../stores/conversations'
 
 const session = useSessionStore()
@@ -41,7 +53,10 @@ const title = computed(
 )
 
 const chat = useChat({
-  transport: createConversationTransport(() => conversationId.value),
+  transport: createConversationTransport(
+    () => conversationId.value,
+    () => conversationAction.value,
+  ),
   // The server names a conversation from its first message, so the sidebar
   // needs a refresh once a reply completes.
   onFinish: () => {
@@ -121,7 +136,9 @@ watch(
 
     const queued = conversations.takeQueuedMessage()
     if (queued) {
-      await chat.sendMessage({ text: queued })
+      // The key is minted here so the optimistic turn carries it, exactly as an
+      // in-conversation send does.
+      await chat.sendMessage({ text: queued, metadata: { clientId: beginAppend() } })
     }
 
     await focusComposer()
@@ -173,11 +190,54 @@ async function submit(): Promise<void> {
   }
 
   draft.value = ''
-  await chat.sendMessage({ text })
+  const clientId = beginAppend()
+  await chat.sendMessage({ text, metadata: { clientId } })
 }
 
 function stop(): void {
   void chat.stop()
+}
+
+async function quoteMessage(message: UIMessage): Promise<void> {
+  await composer.value?.insert(
+    buildQuote(message.role === 'user' ? 'user' : 'assistant', messageText(message)),
+  )
+}
+
+async function editMessage(message: UIMessage): Promise<void> {
+  if (busy.value) {
+    return
+  }
+
+  // The turn's own key addresses it in the request, because a user turn sent in
+  // this session never learned the server uuid; `messageId` keeps the path and
+  // makes the SDK replace that turn in place and drop everything after it.
+  const clientId = messageClientId(message)
+  setConversationAction({ kind: 'edit', messageId: message.id, clientId })
+  try {
+    await chat.sendMessage({
+      text: messageText(message),
+      messageId: message.id,
+      metadata: clientId === undefined ? undefined : { clientId },
+    })
+  } finally {
+    resetConversationAction()
+  }
+}
+
+async function regenerateMessage(message: UIMessage): Promise<void> {
+  if (busy.value) {
+    return
+  }
+
+  // `regenerate` already truncates the chat's own list back to before the
+  // assistant message, so truncating it here as well would make it throw.
+  setConversationAction({ kind: 'regenerate', messageId: message.id })
+  try {
+    await chat.regenerate({ messageId: message.id })
+  } finally {
+    resetConversationAction()
+  }
 }
 
 async function signOut(): Promise<void> {
@@ -225,7 +285,13 @@ async function signOut(): Promise<void> {
 
     <template v-if="conversationId">
       <div ref="scrollArea" class="min-h-0 flex-1 overflow-y-auto px-6 py-8">
-        <MessageList :messages="messages" :working="working" />
+        <MessageList
+          :messages="messages"
+          :working="working"
+          @quote="quoteMessage"
+          @edit="editMessage"
+          @regenerate="regenerateMessage"
+        />
         <p
           v-if="errorMessage"
           role="alert"

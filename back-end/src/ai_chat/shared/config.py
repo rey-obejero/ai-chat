@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     }
     rate_limit_fail_open: bool = True
 
+    # How long a conversation may stay claimed by an in-flight stream before a
+    # later writer is allowed to take it over (ADR-0050). A crashed worker
+    # self-heals instead of wedging the conversation forever.
+    stream_grace_seconds: int = 120
+
     # Durable per-user token quota (ADR-0024), layered under the provider's
     # spend cap and separate from the request-rate limit above.
     token_quota_enabled: bool = True

@@ -44,7 +44,13 @@ async function focus(): Promise<void> {
   }
 }
 
-defineExpose({ focus })
+/** Append to the draft (Quote, FR-14) and put the caret where the text landed. */
+async function insert(text: string): Promise<void> {
+  draft.value = draft.value.length > 0 ? `${draft.value}\n${text}` : text
+  await focus()
+}
+
+defineExpose({ focus, insert })
 </script>
 
 <template>

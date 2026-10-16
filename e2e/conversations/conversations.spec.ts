@@ -128,3 +128,73 @@ test("routes an image in a reply through the media proxy", async ({ signUpPage, 
   await expect(image).toHaveAttribute("alt", "diagram");
   await expect(image).toHaveAttribute("src", /^\/api\/v1\/media\/image\?url=/);
 });
+
+test("copies and quotes a message from the action row", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+
+  await page.getByRole("button", { name: "New conversation" }).click();
+  await page.getByLabel("Message").fill("original turn");
+  const send = page.getByRole("button", { name: "Send" });
+  await expect(send).toBeEnabled();
+  await send.click();
+
+  const transcript = page.getByRole("log");
+  await expect(transcript.getByText("Mock reply: original turn", { exact: true })).toBeVisible();
+
+  // The row is hidden at rest and revealed by hovering the turn.
+  await transcript.locator(".turn").first().hover();
+  await transcript.getByRole("button", { name: "Copy message" }).first().click();
+  await expect(transcript.getByRole("button", { name: "Copied" }).first()).toBeVisible();
+
+  await transcript.getByRole("button", { name: "Quote message" }).first().click();
+  // `getByLabel('Message')` also matches the action buttons once a turn exists,
+  // so address the composer by role.
+  await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue(
+    /^> You: original turn/,
+  );
+});
+
+test("regenerates a reply without duplicating the turn", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+
+  await page.getByRole("button", { name: "New conversation" }).click();
+  await page.getByLabel("Message").fill("regenerate me");
+  const send = page.getByRole("button", { name: "Send" });
+  await expect(send).toBeEnabled();
+  await send.click();
+
+  const transcript = page.getByRole("log");
+  await expect(transcript.getByText("Mock reply: regenerate me", { exact: true })).toBeVisible();
+
+  const assistantTurn = transcript.locator(".turn").filter({ hasText: "Assistant" }).first();
+  await assistantTurn.hover();
+  await assistantTurn.getByRole("button", { name: "Regenerate response" }).click();
+
+  // The old reply is replaced, not appended to.
+  await expect(transcript.getByText("Mock reply: regenerate me", { exact: true })).toHaveCount(1);
+  await expect(transcript.getByText("regenerate me", { exact: true })).toHaveCount(1);
+});
+
+test("edits a user message without duplicating turns", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+
+  await page.getByRole("button", { name: "New conversation" }).click();
+  await page.getByLabel("Message").fill("edit me");
+  const send = page.getByRole("button", { name: "Send" });
+  await expect(send).toBeEnabled();
+  await send.click();
+
+  const transcript = page.getByRole("log");
+  await expect(transcript.getByText("Mock reply: edit me", { exact: true })).toBeVisible();
+
+  const userTurn = transcript.locator(".turn").filter({ hasText: "You" }).first();
+  await userTurn.hover();
+  await userTurn.getByRole("button", { name: "Edit message" }).click();
+
+  // Editing replaces the affected turn and everything after it, then streams a
+  // fresh reply — so the transcript still holds exactly one user turn and one
+  // assistant reply.
+  await expect(transcript.getByText("edit me", { exact: true })).toHaveCount(1);
+  await expect(transcript.getByText("Mock reply: edit me", { exact: true })).toHaveCount(1);
+  await expect(transcript.locator(".turn")).toHaveCount(2);
+});

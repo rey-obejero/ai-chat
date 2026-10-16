@@ -59,6 +59,22 @@ class RateLimitedError(AppError):
     title = "Too Many Requests"
 
 
+class InvalidOperationError(AppError):
+    """The request is well-formed but not allowed for the target's role/state."""
+
+    status_code = HTTPStatus.CONFLICT
+    code = "INVALID_OPERATION"
+    title = "Invalid Operation"
+
+
+class ConversationBusyError(AppError):
+    """Another stream already holds the conversation's one-generation gate."""
+
+    status_code = HTTPStatus.CONFLICT
+    code = "CONVERSATION_BUSY"
+    title = "Conversation Busy"
+
+
 def problem_body(
     *,
     status_code: int,
