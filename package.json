@@ -11,12 +11,16 @@
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.5"
+    "lint-staged": "^16.4.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "browser-tabs-lock",
       "esbuild"
     ]
-  }
+  },
+  "workspaces": [
+    "front-end",
+    "e2e"
+  ]
 }
