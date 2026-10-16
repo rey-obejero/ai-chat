@@ -1,3 +1,4 @@
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
@@ -10,6 +11,32 @@ from sqlalchemy.pool import StaticPool
 from ai_chat.main import create_app
 from ai_chat.shared.config import Settings
 from ai_chat.shared.db import Base, get_session, get_session_factory
+
+# No test reaches another service. The breach check is off for every app built
+# here; a test that exercises screening passes its own settings or a fake client.
+_OFFLINE: dict[str, object] = {
+    "rate_limit_enabled": False,
+    "password_breach_check_enabled": False,
+}
+
+
+@pytest.fixture(autouse=True)
+def _no_auth_service(monkeypatch):
+    """Keep the verification read off the network.
+
+    These tests build the app with `init_auth=False`, so there is no core to ask.
+    The real read would spend the SDK's whole 30-second HTTP timeout before
+    failing, and it fails either way — so it is replaced by a lookup that fails
+    at once, which is the conservative answer the app must reach without the
+    wait. Tests that need a *verified* account override `get_email_verified`.
+    """
+    import ai_chat.auth.adapter_supertokens as adapter
+    from ai_chat.auth.verification import VerificationStateCache
+
+    async def unreachable(_user_id: str) -> bool:
+        raise RuntimeError("no auth service in the test process")
+
+    monkeypatch.setattr(adapter, "_verification_state", VerificationStateCache(unreachable))
 
 
 @pytest_asyncio.fixture
@@ -42,10 +69,11 @@ def _build_app(session_factory, settings):
 async def app(session_factory):
     # Rate limiting is exercised by its own tests against the middleware
     # directly; the shared app fixture keeps it off so auth is not involved.
-    # The token quota is off too — its tests opt in through quota_app.
+    # The token quota is off too — its tests opt in through quota_app. `_OFFLINE`
+    # covers what no test may reach: the breach service.
     return _build_app(
         session_factory,
-        Settings(_env_file=None, rate_limit_enabled=False, token_quota_enabled=False),
+        Settings(_env_file=None, **_OFFLINE, token_quota_enabled=False),
     )
 
 
@@ -56,7 +84,7 @@ async def quota_app(session_factory):
         session_factory,
         Settings(
             _env_file=None,
-            rate_limit_enabled=False,
+            **_OFFLINE,
             token_quota_enabled=True,
             token_quota_tokens=1000,
         ),
@@ -73,7 +101,7 @@ async def two_model_app(session_factory):
         session_factory,
         Settings(
             _env_file=None,
-            rate_limit_enabled=False,
+            **_OFFLINE,
             token_quota_enabled=False,
             llm_model="openai/gpt-4o-mini",
             llm_models=["openai/gpt-4o-mini", "anthropic/claude-haiku"],
