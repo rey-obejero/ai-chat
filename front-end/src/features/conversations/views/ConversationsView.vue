@@ -15,10 +15,12 @@ import RootLayout from '@/components/layouts/RootLayout.vue'
 import SidebarGroup from '@/components/layouts/SidebarGroup.vue'
 import { useSessionStore } from '@/features/auth'
 import { SettingsDialog, type SettingsSection } from '@/features/settings'
+import { displayNameOf } from '@/lib/display-name'
 import { listMessages, listModels, type Conversation, type ModelInfo } from '../api'
 import ConversationList from '../components/ConversationList.vue'
 import MessageComposer from '../components/MessageComposer.vue'
 import MessageList from '../components/MessageList.vue'
+import NamePromptDialog from '../components/NamePromptDialog.vue'
 import SuggestionChips from '../components/SuggestionChips.vue'
 import {
   beginAppend,
@@ -135,13 +137,20 @@ const sections = computed(() => {
   return groups.filter((group) => group.title === 'Recents' || group.conversations.length > 0)
 })
 
-const initial = computed(() => (session.user?.email ?? '?').charAt(0).toUpperCase())
+const accountName = computed(() => displayNameOf(session.user))
+
+const initial = computed(() => (accountName.value || '?').charAt(0).toUpperCase())
+
+/**
+ * The first-run prompt shows only while the account has not answered it: saving a
+ * name or skipping sets the flag, and the write answers with the user the prompt
+ * reads its visibility from, so it closes itself rather than twice.
+ */
+const showNamePrompt = computed(() => session.user !== null && !session.user.name_prompt_seen)
 
 const accountItems = computed<MenuItem[]>(() => [
   { label: 'Personalization', command: () => openSettings('personalization') },
-  // The name section Profile scrolls to arrives with WI-4; until then it opens
-  // the dialog at its top, like Settings.
-  { label: 'Profile', command: () => openSettings(null) },
+  { label: 'Profile', command: () => openSettings('profile') },
   { label: 'Settings', command: () => openSettings(null) },
   { separator: true },
   { label: 'Sign out', command: () => void signOut() },
@@ -500,7 +509,7 @@ async function signOut(): Promise<void> {
       >
         <Avatar :label="initial" shape="circle" class="size-6 shrink-0 text-caption" />
         <span v-if="!collapsed" class="min-w-0 flex-1 truncate max-sm:hidden">
-          {{ session.user?.email }}
+          {{ accountName }}
         </span>
       </button>
       <Menu id="account_menu" ref="accountMenu" :model="accountItems" :popup="true" />
@@ -567,6 +576,7 @@ async function signOut(): Promise<void> {
   </RootLayout>
 
   <SettingsDialog v-model="settingsOpen" :section="settingsSection" />
+  <NamePromptDialog v-if="showNamePrompt" />
   <ConfirmDialog />
 </template>
 

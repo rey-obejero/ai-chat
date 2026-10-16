@@ -22,6 +22,7 @@ import {
   type ConversationPage,
   type ModelInfo,
 } from '@/features/conversations/api'
+import NamePromptDialog from '@/features/conversations/components/NamePromptDialog.vue'
 import { messageText } from '@/features/conversations/messages'
 import ConversationsView from '@/features/conversations/views/ConversationsView.vue'
 
@@ -34,9 +35,15 @@ vi.mock('@/features/conversations/api', () => ({
   updateConversation: vi.fn(),
 }))
 
-vi.mock('@/features/auth', () => ({
-  useSessionStore: () => ({ user: { email: 'ada@example.com' }, signOut: vi.fn() }),
+/**
+ * The session the view reads the account from, mutable so a test can hand the
+ * view an account that has not answered the name prompt or carries no name.
+ */
+const auth = vi.hoisted(() => ({
+  user: { display_name: 'Ada Lovelace', email: 'ada@example.com', name_prompt_seen: true },
+  signOut: vi.fn(),
 }))
+vi.mock('@/features/auth', () => ({ useSessionStore: () => auth }))
 
 /** The popup teleports its items to the body; rendering them in place is clickable. */
 const MenuStub = defineComponent({
@@ -211,6 +218,7 @@ function transcript(wrapper: VueWrapper): UIMessage[] {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  auth.user = { display_name: 'Ada Lovelace', email: 'ada@example.com', name_prompt_seen: true }
   listMock.mockResolvedValue(page([conversation({ id: 'c1', title: 'First' })]))
   listMessagesMock.mockResolvedValue([])
   deleteMock.mockResolvedValue(undefined)
@@ -429,11 +437,49 @@ describe('ConversationsView account menu', () => {
     expect(dialog.props('section')).toBe('personalization')
   })
 
-  it('opens the settings dialog from Profile as well', async () => {
+  it('opens the settings dialog at Profile from its own item', async () => {
     const { wrapper } = await mountView()
 
     await clickAccountItem(wrapper, 'Profile')
 
-    expect(wrapper.findComponent(SettingsDialogStub).props('modelValue')).toBe(true)
+    const dialog = wrapper.findComponent(SettingsDialogStub)
+    expect(dialog.props('modelValue')).toBe(true)
+    expect(dialog.props('section')).toBe('profile')
+  })
+})
+
+describe('ConversationsView account button', () => {
+  it('names the account with the display name and takes its initial', async () => {
+    const { wrapper } = await mountView()
+
+    const button = wrapper.find('button[aria-label="Account"]')
+    expect(button.text()).toContain('Ada Lovelace')
+    expect(button.find('.p-avatar').text()).toBe('A')
+  })
+
+  it('falls back to the email when the account has no name', async () => {
+    auth.user = { display_name: '', email: 'zoe@example.com', name_prompt_seen: true }
+
+    const { wrapper } = await mountView()
+
+    const button = wrapper.find('button[aria-label="Account"]')
+    expect(button.text()).toContain('zoe@example.com')
+    expect(button.find('.p-avatar').text()).toBe('Z')
+  })
+})
+
+describe('ConversationsView name prompt', () => {
+  it('leaves an account that has already answered it alone', async () => {
+    const { wrapper } = await mountView()
+
+    expect(wrapper.findComponent(NamePromptDialog).exists()).toBe(false)
+  })
+
+  it('asks an account that has not answered it yet', async () => {
+    auth.user = { display_name: 'Ada Lovelace', email: 'ada@example.com', name_prompt_seen: false }
+
+    const { wrapper } = await mountView()
+
+    expect(wrapper.findComponent(NamePromptDialog).exists()).toBe(true)
   })
 })
