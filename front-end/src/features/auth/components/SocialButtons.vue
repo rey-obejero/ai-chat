@@ -103,7 +103,7 @@ async function signInWith(thirdPartyId: string): Promise<void> {
           type="button"
           severity="secondary"
           outlined
-          class="justify-center text-sm"
+          class="justify-center !text-sm"
           :loading="pending === provider.id"
           :disabled="pending !== null"
           @click="signInWith(provider.id)"

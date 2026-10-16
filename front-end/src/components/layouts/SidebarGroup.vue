@@ -25,7 +25,7 @@ defineExpose({ expanded })
 </script>
 
 <template>
-  <section class="group mt-5">
+  <section class="sidebar-group mt-5">
     <!-- A button, not a heading: the global h1–h3 weight rule would otherwise
          force 600 onto what is a quiet label. -->
     <button
@@ -36,7 +36,7 @@ defineExpose({ expanded })
     >
       <span class="truncate">{{ title }}</span>
       <IconChevronRight
-        class="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none"
+        class="group-chevron size-3 shrink-0 opacity-0 transition-opacity motion-reduce:transition-none"
         :class="chevron"
         stroke-width="2"
       />
@@ -47,3 +47,12 @@ defineExpose({ expanded })
     </div>
   </section>
 </template>
+
+<style scoped>
+/* Native :hover/:focus-within rather than `group-*` utilities: those variants
+   are inert in this build (see front-end/AGENTS.md). */
+.sidebar-group:hover .group-chevron,
+.sidebar-group:focus-within .group-chevron {
+  opacity: 1;
+}
+</style>

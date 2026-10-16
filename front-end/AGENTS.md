@@ -72,6 +72,17 @@ tokens are noted under "Tailwind v4" and "Don't" below.
   `@theme { --color-… }`, and the Vite plugin is `@tailwindcss/vite`.
 - Prefer utility classes; compose variants in the template.
 
+## Tailwind and PrimeVue layering
+
+PrimeVue ships unlayered CSS, which outranks `@layer utilities` regardless of
+specificity. Any utility that must beat a PrimeVue component style needs an
+important marker (`!size-8`, `!text-body-sm`) — a bare `text-sm` on a
+`.p-button`, for example, silently loses to PrimeVue's 16px and the label
+renders at the wrong size. Prefer extending the preset in `src/app/theme.ts`;
+use `!` only for genuine utility overrides on a PrimeVue element. Do not rely
+on `group-*` variants anywhere: they are inert in this build. Use scoped
+`:hover` / `:focus-within` rules instead.
+
 ## Do
 
 - Use `<script setup lang="ts">` and type props/emits.

@@ -83,7 +83,7 @@ async function submit(): Promise<void> {
         :loading="loading"
         :aria-busy="loading"
         :aria-label="loading ? 'Sending' : undefined"
-        class="w-full text-sm transition-opacity enabled:hover:!bg-ink enabled:hover:opacity-90"
+        class="w-full !text-sm transition-opacity enabled:hover:!bg-ink enabled:hover:opacity-90"
       >
         <template #loadingicon>
           <IconLoaderCircle class="animate-spin" />
