@@ -532,7 +532,6 @@ not specified here; they live in the issue tracker.
 ## 6. Open questions
 
 - The model by which a guest is identified (deferred to an ADR).
-- The token figure behind the unverified "half" cap (FR-4).
 - Whether attachments carry a byte-size cap in addition to file counts (FR-18).
 - Whether the profanity filter is locale-aware for Chinese names (FR-7).
 - When the hidden summarization of long conversations triggers (FR-9/FR-10).
