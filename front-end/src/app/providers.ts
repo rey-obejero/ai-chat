@@ -4,6 +4,7 @@ import Tooltip from 'primevue/tooltip'
 import { createPinia } from 'pinia'
 import SuperTokens from 'supertokens-web-js'
 import EmailPassword from 'supertokens-web-js/recipe/emailpassword'
+import EmailVerification from 'supertokens-web-js/recipe/emailverification'
 import Session from 'supertokens-web-js/recipe/session'
 import ThirdParty from 'supertokens-web-js/recipe/thirdparty'
 import type { App } from 'vue'
@@ -17,7 +18,10 @@ export function setupSuperTokens(): void {
       apiDomain: window.location.origin,
       apiBasePath: '/api/auth',
     },
-    recipeList: [Session.init(), EmailPassword.init(), ThirdParty.init()],
+    // The verification recipe is registered so the link in the verification
+    // mail can be followed (`verifyEmail`) and so the nudge can ask for another
+    // one (`sendVerificationEmail`); the backend sends the mail (FR-4).
+    recipeList: [Session.init(), EmailPassword.init(), ThirdParty.init(), EmailVerification.init()],
   })
 }
 
