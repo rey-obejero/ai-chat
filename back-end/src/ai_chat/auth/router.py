@@ -5,11 +5,17 @@ from ai_chat.auth.adapter_supertokens import configured_providers
 from ai_chat.auth.dependencies import get_current_user_id
 from ai_chat.auth.schemas import (
     PreferencesUpdate,
+    ProfileUpdate,
     SocialProviderRead,
     SocialProvidersRead,
     UserRead,
 )
-from ai_chat.auth.service import get_or_create_user, update_preferences
+from ai_chat.auth.service import (
+    get_or_create_user,
+    mark_name_prompt_seen,
+    update_display_name,
+    update_preferences,
+)
 from ai_chat.shared.config import Settings
 from ai_chat.shared.db import get_session
 
@@ -23,6 +29,32 @@ async def read_me(
 ) -> UserRead:
     user = await get_or_create_user(session, user_id)
     return UserRead.model_validate(user)
+
+
+@router.patch("/me", response_model=UserRead)
+async def update_me(
+    payload: ProfileUpdate,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> UserRead:
+    """Save the account's name, or record the skipped prompt (FR-7).
+
+    Partial, like the preferences write: an absent field keeps its value. Saving
+    a name answers the prompt, so the name wins when both arrive — a request
+    naming itself and denying it answered is a contradiction, and the prompt's
+    point is that it is answered once. The updated account comes back so the
+    caller refreshes the prompt and the settings field from one response.
+    """
+    user = await get_or_create_user(session, user_id)
+    if payload.display_name is not None:
+        updated = await update_display_name(session, user, payload.display_name)
+    elif payload.name_prompt_seen is not None:
+        updated = await mark_name_prompt_seen(session, user, seen=payload.name_prompt_seen)
+    else:
+        # Nothing to change: still a read of the stored account, so `{}` is a
+        # valid (if pointless) request rather than an error.
+        updated = user
+    return UserRead.model_validate(updated)
 
 
 @router.put("/preferences", response_model=UserRead)

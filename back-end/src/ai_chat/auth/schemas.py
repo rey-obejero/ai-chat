@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
 
+from ai_chat.auth.display_name import validate_display_name
 from ai_chat.llm import ResponseStyle
 
 # The cap on standing instructions (FR-24). They ride every reply, so they are
@@ -14,6 +15,11 @@ class UserRead(BaseModel):
 
     id: str
     email: str
+    # What the account is called, and whether the first-run prompt has been
+    # answered (FR-7). They travel with the account because the prompt's
+    # first-run check and the settings field both read them from here.
+    display_name: str
+    name_prompt_seen: bool
     # The account owner's own settings, the way the email is theirs: the
     # settings form loads in one call and always sees what the service holds.
     instructions: str | None
@@ -49,6 +55,34 @@ class PreferencesUpdate(BaseModel):
         if len(cleaned) > INSTRUCTIONS_MAX_LENGTH:
             raise ValueError(f"instructions must be at most {INSTRUCTIONS_MAX_LENGTH} characters")
         return cleaned
+
+
+class ProfileUpdate(BaseModel):
+    """A partial update of the caller's name and first-run prompt state (FR-7).
+
+    Both fields are optional and absent means "leave it alone", so the schema's
+    validation is where a name is judged: `auth.display_name` owns the rules,
+    and a refusal becomes the ordinary 422 whose message says what is wrong.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str | None = None
+    name_prompt_seen: bool | None = None
+
+    @field_validator("display_name", "name_prompt_seen", mode="before")
+    @classmethod
+    def _reject_null(cls, value: object, info: ValidationInfo) -> object:
+        # A field is absent or it carries a value; "clear my name" is not a
+        # state an account can be in (FR-7).
+        if value is None:
+            raise ValueError(f"{info.field_name} may not be null; omit it instead.")
+        return value
+
+    @field_validator("display_name")
+    @classmethod
+    def _valid_name(cls, value: str) -> str:
+        return validate_display_name(value)
 
 
 class SocialProviderRead(BaseModel):
