@@ -229,6 +229,22 @@ The two roles are told apart by alignment and fill, not by color:
 
 Both labels are a 10px caption in Subtext (#666666). The transcript is bottom-anchored, so a short conversation rests just above the composer instead of leaving a gap.
 
+An assistant turn's body is **Markdown Content**; a user turn's body stays literal text, with any fenced block shown as a bare monospace block on the bubble fill.
+
+### Markdown Content
+**Role:** The rendered body of an assistant turn.
+
+Prose inside the turn's column: paragraphs at 16px with 12px between; headings at 20px and 18px, weight 600; lists indented 20px with 6px between items; blockquotes with a 2px Line left border at the tertiary tone; inline code on a Line-at-60% fill at 0.9em Geist Mono; links in the Link treatment, opening in a new tab; tables full width with 1px Line borders and a header row on Line at 40%; and images served through the API's own proxy (ADR-0051) — up to 100% wide, 12px radius, 1px Line border, alt text preserved, lazily loaded.
+
+Streamed content re-renders on every chunk, so a partially streamed reply must degrade to readable text rather than break; malformed markup renders as literal text and rendered content never executes code.
+
+### Code Block
+**Role:** A fenced code block in an assistant reply.
+
+Paper White fill, 1px Line border, 12px radius — the same shell as the Composer Card. A header row carries the language label (body-sm in Subtext, lowercase as written, falling back to `code`) and a copy control on the right (24×24, tertiary treatment, `aria-label="Copy code"`, tooltipped), over a 1px Line bottom border. The body is Geist Mono 14px at 1.5 line height, capped at 24rem tall and scrolling past that.
+
+Past 20 lines a footer row appears with a tertiary "Show more" control that flips to "Show less" with `aria-expanded`, lifting the height cap. Copying flips the control to a check mark for 1.5 seconds. A fence still streaming in stays plain — no highlighting — and keeps its header, copy control, and scroll.
+
 ### Icon Button
 **Role:** A control whose entire content is a glyph, such as attach, send, or the sidebar collapse toggle.
 

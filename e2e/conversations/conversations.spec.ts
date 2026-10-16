@@ -59,3 +59,72 @@ test("creates the conversation from the first message on the empty state", async
     page.getByRole("log").getByText("Mock reply: Straight to it", { exact: true }),
   ).toBeVisible();
 });
+
+test("renders the assistant's markdown as elements", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+
+  await page.getByRole("button", { name: "New conversation" }).click();
+  await page.getByLabel("Message").fill("**bold**");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByRole("log").locator("strong")).toHaveText("bold");
+});
+
+test("highlights a code block and copies it", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+
+  await page.getByRole("button", { name: "New conversation" }).click();
+  // The mock prefixes "Mock reply: ", so the fence has to start on its own line;
+  // an internal newline survives the send-time trim, a leading one does not.
+  await page.getByLabel("Message").fill("intro\n```js\nconst x = 1\n```");
+  const send = page.getByRole("button", { name: "Send" });
+  await expect(send).toBeEnabled();
+  await send.click();
+
+  const block = page.getByRole("log").locator(".md-code");
+  await expect(block.locator(".md-code__lang")).toHaveText("js");
+  await expect(block.locator(".hljs-keyword")).toHaveCount(1);
+
+  // The containerized stack serves the app over http://caddy, which is not a
+  // secure origin: the async Clipboard API is absent, so the clipboard cannot be
+  // read back from the page. The control's copied state is the observable
+  // behaviour here; the exact text written is asserted in the component's unit
+  // test (where the clipboard is stubbed).
+  await block.getByRole("button", { name: "Copy code" }).click();
+  await expect(block.locator(".md-code__copy[data-copied]")).toHaveCount(1);
+});
+
+test("expands a code block longer than the line threshold", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+
+  const lines = Array.from({ length: 25 }, (_, index) => `line ${index}`).join("\n");
+  await page.getByRole("button", { name: "New conversation" }).click();
+  await page.getByLabel("Message").fill(`intro\n\`\`\`\n${lines}\n\`\`\``);
+  const send = page.getByRole("button", { name: "Send" });
+  await expect(send).toBeEnabled();
+  await send.click();
+
+  const transcript = page.getByRole("log");
+  const expand = transcript.getByRole("button", { name: "Show more" });
+  await expect(expand).toHaveAttribute("aria-expanded", "false");
+
+  await expand.click();
+  await expect(transcript.getByRole("button", { name: "Show less" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+});
+
+test("routes an image in a reply through the media proxy", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+
+  await page.getByRole("button", { name: "New conversation" }).click();
+  await page.getByLabel("Message").fill("![diagram](https://example.invalid/d.png)");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  // The proxy's own tests cover the fetch; here the element and its proxied
+  // src are what matter.
+  const image = page.getByRole("log").locator("img");
+  await expect(image).toHaveAttribute("alt", "diagram");
+  await expect(image).toHaveAttribute("src", /^\/api\/v1\/media\/image\?url=/);
+});

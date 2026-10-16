@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     rate_limit_storage_uri: str = "async+memory://"
     rate_limit_rules: dict[str, str] = {
         "/api/v1/conversations": "20/minute",
+        "/api/v1/media": "60/minute",
         "/api/auth": "20/minute",
         "/api/auth/user/password/reset": "3/minute",
     }
@@ -83,6 +84,14 @@ class Settings(BaseSettings):
     token_quota_enabled: bool = True
     token_quota_tokens: int = 100_000
     token_quota_period: str = "month"
+
+    # Server-side image proxy (ADR-0051). Disabling it removes the route
+    # entirely, so a deployment can opt out without an open endpoint lingering.
+    media_proxy_enabled: bool = True
+    media_max_bytes: int = 5_242_880
+    media_timeout_seconds: float = 10.0
+    media_max_redirects: int = 4
+    media_cache_ttl_seconds: int = 86_400
 
     @property
     def supertokens_api_key_or_none(self) -> str | None:
