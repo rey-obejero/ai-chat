@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,31 +67,65 @@ async def spent_in_period(session: AsyncSession, user_id: str, *, period_start: 
     return int(result.scalar_one())
 
 
+def effective_limit(settings: Settings, *, email_verified: bool) -> int | None:
+    """The allowance this account may spend this period (FR-4, ADR-0039).
+
+    Computed, never stored: verification decides the allowance and the state can
+    change between two requests, so the answer is read each time. An unverified
+    account is on ``token_quota_unverified_tokens`` — half the full quota unless
+    a deployment says otherwise — and the full quota is the ceiling, so a pair of
+    settings that disagree cannot hand an unverified account more than a
+    verified one. ``None`` means the quota is off.
+    """
+    if not settings.token_quota_enabled:
+        return None
+    if email_verified:
+        return settings.token_quota_tokens
+
+    unverified = settings.token_quota_unverified_tokens
+    if unverified is None:
+        return settings.token_quota_tokens // 2
+    return min(unverified, settings.token_quota_tokens)
+
+
 async def enforce(
     session: AsyncSession,
     user_id: str,
     *,
+    email_verified: bool,
     settings: Settings | None = None,
     now: datetime | None = None,
 ) -> None:
-    """Raise ``QuotaExceededError`` once the period budget is spent.
+    """Raise ``QuotaExceededError`` once the period allowance is spent.
 
     Checked before a reply starts, not reserved per request: a user can exceed
     the budget by at most one reply, and the provider-side spend cap is the hard
     backstop (ADR-0019).
+
+    Verification arrives as an argument rather than being looked up here — it is
+    the auth slice's state, and this module's job is the ledger. An unverified
+    account is on the reduced allowance and its refusal carries
+    ``verification_required``, which is what the client turns into the nudge to
+    verify instead of the plain quota copy (ADR-0039).
     """
     settings = settings or get_settings()
-    if not settings.token_quota_enabled:
+    limit = effective_limit(settings, email_verified=email_verified)
+    if limit is None:
         return
 
     now = now or datetime.now(UTC)
     start, resets_at = period_bounds(now, settings.token_quota_period)
     used = await spent_in_period(session, user_id, period_start=start)
-    if used < settings.token_quota_tokens:
+    if used < limit:
         return
 
     retry_after = max(0, int((resets_at - now).total_seconds()))
-    raise QuotaExceededError(
-        detail="You have used your token quota for this period.",
-        extensions={"retry_after": retry_after},
-    )
+    extensions: dict[str, Any] = {"retry_after": retry_after}
+    detail = "You have used your token quota for this period."
+    if not email_verified:
+        extensions["verification_required"] = True
+        detail = (
+            "You have used the allowance for an unverified account. Verify your "
+            "email address to unlock the full allowance."
+        )
+    raise QuotaExceededError(detail=detail, extensions=extensions)

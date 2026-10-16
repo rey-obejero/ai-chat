@@ -69,7 +69,9 @@ async def test_enforce_allows_spend_under_the_budget(session_factory) -> None:
             session, user_id="u1", conversation_id=None, usage=TokenUsage(total_tokens=99)
         )
 
-        await service.enforce(session, "u1", settings=_settings(token_quota_tokens=100))
+        await service.enforce(
+            session, "u1", email_verified=True, settings=_settings(token_quota_tokens=100)
+        )
 
 
 async def test_enforce_raises_at_the_budget(session_factory) -> None:
@@ -79,10 +81,14 @@ async def test_enforce_raises_at_the_budget(session_factory) -> None:
         )
 
         with pytest.raises(QuotaExceededError) as excinfo:
-            await service.enforce(session, "u1", settings=_settings(token_quota_tokens=100))
+            await service.enforce(
+                session, "u1", email_verified=True, settings=_settings(token_quota_tokens=100)
+            )
 
     assert excinfo.value.code == "QUOTA_EXCEEDED"
     assert excinfo.value.extensions["retry_after"] >= 0
+    # A verified account is never nudged to verify.
+    assert "verification_required" not in excinfo.value.extensions
 
 
 async def test_enforce_is_a_noop_when_the_quota_is_disabled(session_factory) -> None:
@@ -94,5 +100,62 @@ async def test_enforce_is_a_noop_when_the_quota_is_disabled(session_factory) -> 
         await service.enforce(
             session,
             "u1",
+            # Disabled beats the split: there is no allowance to reduce.
+            email_verified=False,
             settings=_settings(token_quota_enabled=False, token_quota_tokens=1),
         )
+
+
+async def test_an_unverified_account_is_capped_at_half_the_quota(session_factory) -> None:
+    settings = _settings(token_quota_tokens=1000)
+    async with session_factory() as session:
+        await service.record(
+            session, user_id="u1", conversation_id=None, usage=TokenUsage(total_tokens=499)
+        )
+        await service.enforce(session, "u1", email_verified=False, settings=settings)
+
+        await service.record(
+            session, user_id="u1", conversation_id=None, usage=TokenUsage(total_tokens=1)
+        )
+
+        with pytest.raises(QuotaExceededError) as excinfo:
+            await service.enforce(session, "u1", email_verified=False, settings=settings)
+
+    # Half of 1000, and the refusal asks for the thing that would lift it.
+    assert excinfo.value.extensions["verification_required"] is True
+
+
+async def test_a_verified_account_spends_past_the_half_way_mark(session_factory) -> None:
+    settings = _settings(token_quota_tokens=1000)
+    async with session_factory() as session:
+        await service.record(
+            session, user_id="u1", conversation_id=None, usage=TokenUsage(total_tokens=500)
+        )
+
+        await service.enforce(session, "u1", email_verified=True, settings=settings)
+
+
+async def test_the_unverified_allowance_can_be_set(session_factory) -> None:
+    settings = _settings(token_quota_tokens=1000, token_quota_unverified_tokens=100)
+    async with session_factory() as session:
+        await service.record(
+            session, user_id="u1", conversation_id=None, usage=TokenUsage(total_tokens=100)
+        )
+
+        with pytest.raises(QuotaExceededError):
+            await service.enforce(session, "u1", email_verified=False, settings=settings)
+
+
+def test_the_unverified_allowance_never_exceeds_the_full_one() -> None:
+    # A pair of settings that disagree must not hand an unverified account more
+    # than a verified one.
+    settings = _settings(token_quota_tokens=1000, token_quota_unverified_tokens=5000)
+
+    assert service.effective_limit(settings, email_verified=False) == 1000
+
+
+def test_there_is_no_limit_when_the_quota_is_off() -> None:
+    settings = _settings(token_quota_enabled=False)
+
+    assert service.effective_limit(settings, email_verified=False) is None
+    assert service.effective_limit(settings, email_verified=True) is None
