@@ -30,8 +30,18 @@ const draft = defineModel<string>({ required: true })
 const model = defineModel<string | null>('model', { default: null })
 
 const props = withDefaults(
-  defineProps<{ disabled: boolean; busy: boolean; models?: ModelInfo[] }>(),
-  { models: () => [] },
+  defineProps<{
+    disabled: boolean
+    busy: boolean
+    models?: ModelInfo[]
+    /**
+     * Which side of the card the command palette opens on. `above` suits a card
+     * at the bottom of a conversation; the empty state anchors the card near the
+     * top of a scroll container, whose top edge clips a popup above it.
+     */
+    palettePlacement?: 'above' | 'below'
+  }>(),
+  { models: () => [], palettePlacement: 'above' },
 )
 const emit = defineEmits<{ submit: []; stop: [] }>()
 
@@ -79,6 +89,38 @@ const activeIndex = ref(0)
 const activeCommand = computed(() => matches.value[activeIndex.value])
 /** The filter Escape dismissed; typing a different one reopens the palette. */
 const dismissedQuery = ref<string | null>(null)
+
+/**
+ * A draft that is only an invocation — `/`, or `/filter` with no argument yet.
+ * The palette owns that text and the field keeps the caret, so Enter is already
+ * consumed; the Send button must not be the way around it (DESIGN.md: a lone
+ * slash cannot submit).
+ */
+const invocationOnly = computed(() => {
+  const term = commandQuery(draft.value)
+  return term !== null && !/\s/.test(draft.value)
+})
+
+/**
+ * The palette is open while the draft invokes a command *and* the field holds the
+ * caret (DESIGN.md), so the caret leaving closes it and coming back reopens it.
+ * A click on a row never moves the caret — the rows prevent their own mousedown —
+ * so this cannot fire between a row's press and its select.
+ */
+function onFocusOut(event: FocusEvent): void {
+  const next = event.relatedTarget
+  if (next instanceof HTMLElement && next.closest('#command-palette') !== null) {
+    return
+  }
+  paletteOpen.value = false
+}
+
+function onFocusIn(): void {
+  if (commandQuery(draft.value) !== null) {
+    paletteOpen.value = true
+    dismissedQuery.value = null
+  }
+}
 
 watch(draft, (value) => {
   const current = commandQuery(value)
@@ -202,12 +244,15 @@ defineExpose({ focus, insert })
       "
       class="w-full resize-none border-0 bg-transparent p-0 text-base shadow-none focus:ring-0 sm:text-sm"
       @keydown="onKeydown"
+      @focusin="onFocusIn"
+      @focusout="onFocusOut"
     />
 
     <CommandPalette
       v-if="paletteOpen"
       :commands="matches"
       :active-index="activeIndex"
+      :placement="palettePlacement"
       @select="select"
       @close="dismiss"
     />
@@ -251,7 +296,7 @@ defineExpose({ focus, insert })
         <Button
           v-else
           rounded
-          :disabled="disabled"
+          :disabled="disabled || invocationOnly"
           aria-label="Send"
           class="!size-8 !p-0"
           v-tooltip="{ value: 'Send message', class: 'text-body-sm' }"
