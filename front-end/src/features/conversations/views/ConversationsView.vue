@@ -389,6 +389,27 @@ async function quoteMessage(message: UIMessage): Promise<void> {
   )
 }
 
+/**
+ * Re-read the transcript. An edit or a regenerate slices the local list before
+ * the request goes out, so a refusal (a busy conversation, a spent quota) or a
+ * transport failure leaves those turns looking gone while the server never
+ * dropped them. History belongs to the server (ADR-0022).
+ */
+async function reloadTranscript(): Promise<void> {
+  const id = conversationId.value
+  if (id === null) {
+    return
+  }
+  try {
+    const history = await listMessages(id)
+    if (conversationId.value === id) {
+      chat.messages.value = toUIMessages(history)
+    }
+  } catch {
+    // The read failed as well; the next navigation or reload picks it up.
+  }
+}
+
 async function editMessage(message: UIMessage): Promise<void> {
   if (busy.value) {
     return
@@ -412,6 +433,9 @@ async function editMessage(message: UIMessage): Promise<void> {
       messageId: message.id,
       metadata: targetClientId === undefined ? undefined : { clientId: targetClientId },
     })
+    if (chat.error.value) {
+      await reloadTranscript()
+    }
   } finally {
     resetConversationAction()
   }
@@ -427,6 +451,9 @@ async function regenerateMessage(message: UIMessage): Promise<void> {
   setConversationAction({ kind: 'regenerate', messageId: message.id })
   try {
     await chat.regenerate({ messageId: message.id })
+    if (chat.error.value) {
+      await reloadTranscript()
+    }
   } finally {
     resetConversationAction()
   }
