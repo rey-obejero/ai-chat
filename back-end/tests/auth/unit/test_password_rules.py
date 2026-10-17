@@ -16,6 +16,10 @@ from ai_chat.shared.config import Settings
 # Long, unguessable, and scores 4 with zxcvbn — the case that must be accepted.
 STRONG = "correcthorsebatterystaple"
 
+# Longer than the 72 characters `zxcvbn` will score, so it pins the cap: the
+# phrase is judged on its prefix rather than refused outright.
+LONG_PASSPHRASE = "Masquerade-Lantern-Obsidian-Quilt-Riptide-Saffron-Tundra-Vertex-Kx7#Qm2!Vt9"
+
 
 def _settings(**overrides: object) -> Settings:
     return Settings(_env_file=None, **overrides)
@@ -116,3 +120,19 @@ async def test_the_breach_check_can_be_switched_off() -> None:
     )
 
     assert client.prefixes == []
+
+
+async def test_a_passphrase_longer_than_the_scorer_reads_is_accepted() -> None:
+    """`zxcvbn` raises above 72 characters; a long passphrase is judged, not refused."""
+    assert len(LONG_PASSPHRASE) > 72
+
+    await validate_password(
+        LONG_PASSPHRASE, settings=_settings(password_breach_check_enabled=False)
+    )
+
+
+async def test_a_long_but_weak_password_is_still_refused() -> None:
+    with pytest.raises(WeakPasswordError) as refused:
+        await validate_password("a" * 80, settings=_settings(password_breach_check_enabled=False))
+
+    assert "too easy to guess" in refused.value.detail
