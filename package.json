@@ -18,9 +18,5 @@
       "browser-tabs-lock",
       "esbuild"
     ]
-  },
-  "workspaces": [
-    "front-end",
-    "e2e"
-  ]
+  }
 }
