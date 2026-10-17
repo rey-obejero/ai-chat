@@ -128,7 +128,9 @@ async def test_an_empty_name_is_refused(app, client, session_factory) -> None:
     response = await client.patch("/api/v1/me", json={"display_name": "   "})
 
     assert response.status_code == 422
-    assert "required" in response.json()["errors"][0]["message"]
+    problem = response.json()
+    assert problem["code"] == "INVALID_DISPLAY_NAME"
+    assert "required" in problem["detail"]
     # The refusal leaves the account alone rather than blanking the name.
     assert (await client.get("/api/v1/me")).json()["display_name"] == DERIVED
 
@@ -141,7 +143,9 @@ async def test_the_cap_is_measured_after_trimming(app, client, session_factory) 
     at_cap = await client.patch("/api/v1/me", json={"display_name": f"  {'x' * 50}  "})
 
     assert over.status_code == 422
-    assert "at most 50 characters" in over.json()["errors"][0]["message"]
+    problem = over.json()
+    assert problem["code"] == "INVALID_DISPLAY_NAME"
+    assert "at most 50 characters" in problem["detail"]
     assert at_cap.status_code == 200, at_cap.text
     assert at_cap.json()["display_name"] == "x" * 50
 
@@ -153,7 +157,9 @@ async def test_a_name_with_a_control_character_is_refused(app, client, session_f
     response = await client.patch("/api/v1/me", json={"display_name": "Amara\nOkafor"})
 
     assert response.status_code == 422
-    assert "control characters" in response.json()["errors"][0]["message"]
+    problem = response.json()
+    assert problem["code"] == "INVALID_DISPLAY_NAME"
+    assert "control characters" in problem["detail"]
     assert (await client.get("/api/v1/me")).json()["display_name"] == DERIVED
 
 
@@ -166,7 +172,9 @@ async def test_a_profane_name_is_refused_with_a_readable_reason(
     response = await client.patch("/api/v1/me", json={"display_name": "Amara Shit Okafor"})
 
     assert response.status_code == 422
-    assert "not allowed" in response.json()["errors"][0]["message"]
+    problem = response.json()
+    assert problem["code"] == "INVALID_DISPLAY_NAME"
+    assert "not allowed" in problem["detail"]
     # Nothing is masked or renamed behind the account's back: the old name stands.
     stored = (await client.get("/api/v1/me")).json()
     assert stored["display_name"] == DERIVED

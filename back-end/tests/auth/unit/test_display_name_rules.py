@@ -12,11 +12,11 @@ import pytest
 from ai_chat.auth.display_name import (
     FALLBACK_DISPLAY_NAME,
     MAX_DISPLAY_NAME_LENGTH,
-    InvalidDisplayNameError,
     contains_profanity,
     derive_display_name,
     validate_display_name,
 )
+from ai_chat.auth.exceptions import InvalidDisplayNameError
 
 CAP = MAX_DISPLAY_NAME_LENGTH
 

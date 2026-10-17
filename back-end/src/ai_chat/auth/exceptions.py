@@ -33,3 +33,17 @@ class EmailNotVerifiedError(AppError):
     status_code = HTTPStatus.FORBIDDEN
     code = "EMAIL_NOT_VERIFIED"
     title = "Email Not Verified"
+
+
+class InvalidDisplayNameError(AppError):
+    """A name that may not be stored, carrying the reason to show (FR-7).
+
+    A domain refusal rather than a schema one: its reason is the problem's
+    `detail`, which is the line the settings field and the first-run prompt both
+    render. Raised from inside a schema validator it would instead become a
+    generic "Request validation failed." with the reason buried in `errors[]`.
+    """
+
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "INVALID_DISPLAY_NAME"
+    title = "Invalid Display Name"

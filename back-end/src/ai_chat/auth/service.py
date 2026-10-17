@@ -2,7 +2,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_chat.auth.adapter_supertokens import get_email
-from ai_chat.auth.display_name import derive_display_name
+from ai_chat.auth.display_name import derive_display_name, validate_display_name
 from ai_chat.auth.models import User
 from ai_chat.llm import ResponseStyle
 
@@ -62,10 +62,10 @@ async def update_display_name(session: AsyncSession, user: User, display_name: s
 
     Saving a name is an answer to the first-run prompt, so the flag follows it:
     the prompt is asked once, and naming yourself is the account answering it.
-    The name arrives already NFC-normalised and validated at the boundary; the
-    stored value is the checked value.
+    The rule lives in the domain module and refuses with the reason the field and
+    the prompt both show; the stored value is the checked one.
     """
-    user.display_name = display_name
+    user.display_name = validate_display_name(display_name)
     user.name_prompt_seen = True
     await session.commit()
     await session.refresh(user)
