@@ -261,5 +261,17 @@ async def _record_usage(
     conversation_id: uuid.UUID,
     usage: TokenUsage,
 ) -> None:
-    async with session_factory() as session:
-        await record(session, user_id=user_id, conversation_id=conversation_id, usage=usage)
+    """Append one reply's spend to the ledger, whether or not its conversation stands.
+
+    A delete is deliberately not gated (ADR-0052), so the conversation can be gone
+    by the time a reply completes — and then the row this write names no longer
+    exists, which the foreign key refuses. The tokens were spent either way, and
+    the ledger is the record of that: the spend lands against no conversation
+    rather than not at all.
+    """
+    try:
+        async with session_factory() as session:
+            await record(session, user_id=user_id, conversation_id=conversation_id, usage=usage)
+    except IntegrityError:
+        async with session_factory() as session:
+            await record(session, user_id=user_id, conversation_id=None, usage=usage)
