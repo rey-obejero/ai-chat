@@ -1,5 +1,6 @@
 import socket
 import threading
+import time
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -38,6 +39,23 @@ class _Handler(BaseHTTPRequestHandler):
             self.end_headers()
         elif self.path == "/not-an-image":
             self._respond(200, "text/html", b"<html></html>")
+        elif self.path == "/bad-redirect":
+            self.send_response(302)
+            # Not a parsable URL: this makes `httpx` raise `InvalidURL`, which is
+            # not an `HTTPError`, so it used to escape as a 500.
+            self.send_header("Location", "http://[not-an-ipv6]/x.png")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        elif self.path == "/trickle.png":
+            # Every write lands inside `httpx`'s per-read timeout and the promised
+            # body never arrives, so only a whole-fetch deadline ends this.
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(1024 * 1024))
+            self.end_headers()
+            for _ in range(60):
+                time.sleep(0.05)
+                self.wfile.write(b"\x89PNG")
         else:
             self._respond(404, "text/plain", b"missing")
 
@@ -192,3 +210,40 @@ def _make_user_override():
         return "user-1"
 
     return override
+
+
+async def test_an_unparseable_redirect_location_is_a_502(app, client, image_server) -> None:
+    base, _counts = image_server
+    _current_user(app)
+    _pin_resolver(app)
+
+    response = await client.get("/api/v1/media/image", params={"url": f"{base}/bad-redirect"})
+
+    assert response.status_code == 502
+    assert response.content == b""
+
+
+async def test_a_trickling_origin_is_cut_off_by_the_deadline(image_server) -> None:
+    base, _counts = image_server
+    application = create_app(
+        Settings(
+            _env_file=None,
+            rate_limit_enabled=False,
+            token_quota_enabled=False,
+            media_timeout_seconds=0.2,
+        ),
+        init_auth=False,
+    )
+    transport = ASGITransport(app=application)
+    started = time.monotonic()
+    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+        application.dependency_overrides[get_current_user_id] = _make_user_override()
+        application.state.media_resolver = _StaticResolver()
+        response = await http_client.get(
+            "/api/v1/media/image", params={"url": f"{base}/trickle.png"}
+        )
+    elapsed = time.monotonic() - started
+
+    assert response.status_code == 502
+    # Ended by the deadline, not by the origin finishing three seconds later.
+    assert elapsed < 1.5, f"the fetch took {elapsed:.2f}s"

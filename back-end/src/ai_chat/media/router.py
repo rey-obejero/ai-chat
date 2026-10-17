@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
@@ -76,14 +78,22 @@ async def read_image(
     if cached is not None:
         return _image_response(cached, settings)
     try:
-        image = await fetch_image(
-            client,
-            url,
-            resolver=resolver,
-            max_bytes=settings.media_max_bytes,
-            max_redirects=settings.media_max_redirects,
-        )
-    except MediaFetchError:
+        # `httpx` has no total-response deadline — its timeout is per socket read —
+        # so a body that trickles a byte at a time would hold a connection from the
+        # pool every user shares for as long as the origin likes. The same setting
+        # bounds the whole fetch.
+        async with asyncio.timeout(settings.media_timeout_seconds):
+            image = await fetch_image(
+                client,
+                url,
+                resolver=resolver,
+                max_bytes=settings.media_max_bytes,
+                max_redirects=settings.media_max_redirects,
+            )
+    except (MediaFetchError, httpx.HTTPError, httpx.InvalidURL, TimeoutError):
+        # An origin controls both its redirect target and its body, so anything it
+        # can make go wrong here is an ordinary fetch failure: 502, never a 500
+        # with a traceback (ADR-0051).
         return Response(status_code=502)
     cache.set(url, CachedImage(content=image.content, content_type=image.content_type))
     return _image_response(CachedImage(image.content, image.content_type), settings)

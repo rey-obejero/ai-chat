@@ -124,6 +124,9 @@ class Settings(BaseSettings):
     # entirely, so a deployment can opt out without an open endpoint lingering.
     media_proxy_enabled: bool = True
     media_max_bytes: int = 5_242_880
+    # `httpx` applies this per socket phase, so the proxy also uses it as the
+    # whole fetch's deadline: a body that trickles inside the read timeout would
+    # otherwise hold a pooled connection open for as long as the origin likes.
     media_timeout_seconds: float = 10.0
     media_max_redirects: int = 4
     media_cache_ttl_seconds: int = 86_400
