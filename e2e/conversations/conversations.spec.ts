@@ -348,6 +348,9 @@ test("asks for a display name once and never again", async ({ signUpPage, page }
   // shows the name. The button's accessible name is "Account"; the display name
   // is its visible label.
   await page.reload();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // Prove the account was re-read first: `toHaveCount(0)` passes the moment the
+  // count matches, so asserting it before hydration would pass for a build that
+  // never persisted the answer.
   await expect(page.getByRole("button", { name: "Account" })).toContainText("Ada Lovelace");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
