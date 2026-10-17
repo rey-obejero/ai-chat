@@ -521,7 +521,7 @@ async function signOut(): Promise<void> {
           <ConversationList
             v-model:active-id="activeId"
             :conversations="section.conversations"
-            @rename="conversations.rename"
+            :rename="conversations.rename"
             @toggle-pin="conversations.togglePin"
             @toggle-favourite="conversations.toggleFavourite"
             @toggle-archive="conversations.toggleArchive"

@@ -2,8 +2,10 @@
 /**
  * The conversation rows (DESIGN.md — Conversation Row). Rows are presentation
  * only: selection arrives as `activeId` and every mutation leaves as an event,
- * because the store and the route live in the view. The trailing trigger's
- * reveal is the scoped CSS at the foot of this file: `group-*` is inert here.
+ * because the store and the route live in the view — except the rename, whose
+ * outcome the field itself has to know (a refusal keeps it open).
+ * The trailing trigger's reveal is the scoped CSS at the foot of this file:
+ * `group-*` is inert here.
  */
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
@@ -17,10 +19,16 @@ import type { Conversation } from '../api'
 
 const activeId = defineModel<string | null>('activeId')
 
-const props = defineProps<{ conversations: Conversation[] }>()
+/** The server's `TITLE_MAX_LENGTH`: the rename field cannot exceed it. */
+const TITLE_MAX_LENGTH = 255
+
+const props = defineProps<{
+  conversations: Conversation[]
+  /** Writes a new title, reporting whether it landed, so a refusal can keep the field open. */
+  rename: (id: string, title: string) => Promise<boolean>
+}>()
 
 const emit = defineEmits<{
-  rename: [id: string, title: string]
   togglePin: [id: string]
   toggleFavourite: [id: string]
   toggleArchive: [id: string]
@@ -93,18 +101,23 @@ async function endRenaming(id: string): Promise<void> {
   titleButtons.get(id)?.focus()
 }
 
-function commitRename(): void {
+async function commitRename(): Promise<void> {
   const conversation = props.conversations.find((item) => item.id === renamingId.value)
   if (!conversation) {
     return
   }
   const title = draftTitle.value.trim()
-  // A blank title is what the API rejects (1–255 characters) and an unchanged
-  // one is not worth a write, so both simply close the field.
-  if (title.length > 0 && title !== conversation.title) {
-    emit('rename', conversation.id, title)
+  // A blank title is what the API rejects and an unchanged one is not worth a
+  // write, so both simply close the field.
+  if (title.length === 0 || title === conversation.title) {
+    await endRenaming(conversation.id)
+    return
   }
-  void endRenaming(conversation.id)
+  // A refusal leaves the field open with what the user typed: closing it would
+  // discard the edit and blank the list behind an error.
+  if (await props.rename(conversation.id, title)) {
+    await endRenaming(conversation.id)
+  }
 }
 
 function cancelRename(): void {
@@ -129,6 +142,7 @@ function cancelRename(): void {
             type="text"
             class="mx-0.5 my-px min-w-0 flex-1 rounded-xl border border-line bg-paper-white px-2.5 py-1.5 text-body-sm text-ink focus:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             aria-label="Conversation title"
+            :maxlength="TITLE_MAX_LENGTH"
             @keydown.enter.prevent="commitRename"
             @keydown.esc.prevent="cancelRename"
           />
