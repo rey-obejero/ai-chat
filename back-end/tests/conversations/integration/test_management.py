@@ -5,12 +5,13 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from ai_chat.auth import get_current_user_id
 from ai_chat.auth.models import User
 from ai_chat.conversations import service
 from ai_chat.conversations.models import Conversation, Message
+from ai_chat.conversations.streaming import _record_usage_quietly
 from ai_chat.llm import ChatChunk, get_chat_provider
 from ai_chat.usage.models import TokenUsage
 
@@ -353,6 +354,38 @@ async def test_delete_keeps_the_token_ledger(app, client, session_factory) -> No
             await session.execute(select(TokenUsage).where(TokenUsage.user_id == OWNER))
         ).scalars()
         assert [row.total_tokens for row in rows] == [10]
+
+
+async def test_a_deleted_conversation_still_records_the_reply_spend(session_factory) -> None:
+    """A delete racing a stream must not cost the ledger the reply's tokens (ADR-0052).
+
+    Foreign keys are off in this suite unless a test asks for them, which is what
+    hides this: with them on, the ledger write for a conversation that is already
+    gone is refused by the database rather than dropped silently.
+    """
+    await _seed_users(session_factory)
+    conversation_id = await _seed_conversation(session_factory)
+    async with session_factory() as session:
+        await session.execute(text("PRAGMA foreign_keys=ON"))
+        conversation = await session.get(Conversation, conversation_id)
+        assert conversation is not None
+        await session.delete(conversation)
+        await session.commit()
+
+    await _record_usage_quietly(
+        session_factory,
+        user_id=OWNER,
+        conversation_id=conversation_id,
+        usage=TokenUsage(prompt_tokens=3, completion_tokens=7, total_tokens=10),
+    )
+
+    async with session_factory() as session:
+        rows = (
+            await session.execute(select(TokenUsage).where(TokenUsage.user_id == OWNER))
+        ).scalars()
+        # On the ledger against no conversation: the tokens were paid for whatever
+        # became of the conversation they were spent in.
+        assert [(row.conversation_id, row.total_tokens) for row in rows] == [(None, 10)]
 
 
 async def test_delete_is_allowed_while_a_stream_holds_the_conversation(
