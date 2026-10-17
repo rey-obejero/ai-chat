@@ -23,7 +23,12 @@ const token = EmailPassword.getResetPasswordTokenFromURL()
 if (token) {
   const url = new URL(window.location.href)
   url.searchParams.delete('token')
-  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+  const stripped = `${url.pathname}${url.search}${url.hash}`
+  // vue-router keeps its own copy of this entry in `history.state` and writes it
+  // back into the address bar on the next navigation, so the stripped URL has to
+  // replace that too: otherwise the token returns with the next push and stays on
+  // the entry behind it (ADR-0031).
+  window.history.replaceState({ ...window.history.state, current: stripped }, '', stripped)
 }
 
 const password = ref('')
