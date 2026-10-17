@@ -36,6 +36,14 @@ export const useConversationsStore = defineStore('conversations', () => {
   // conversation view mounts and can send it (ADR-0022).
   const queuedMessage = ref('')
 
+  /**
+   * Every row this session has seen, by id. The list is a server query, so a
+   * search replaces it wholesale and an open conversation whose title does not
+   * match the term drops out of it — while the transcript, the header title and
+   * the model guard still need that row (FR-11, FR-23).
+   */
+  const known = ref<Record<string, Conversation>>({})
+
   // The sidebar's three sections. Archived rows are fetched (`include_archived`)
   // and split out here rather than in a second request; a pinned row that is
   // also archived belongs to Archived, so unarchiving it returns it to Pinned.
@@ -64,6 +72,9 @@ export const useConversationsStore = defineStore('conversations', () => {
   )
 
   function apply(items: Conversation[]): void {
+    for (const item of items) {
+      known.value[item.id] = item
+    }
     conversations.value = [...items].sort(byPinnedThenActivity)
   }
 
@@ -179,6 +190,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       return false
     }
     conversations.value = conversations.value.filter((conversation) => conversation.id !== id)
+    delete known.value[id]
     return true
   }
 
@@ -194,6 +206,7 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   return {
     conversations,
+    known,
     loading,
     error,
     query,

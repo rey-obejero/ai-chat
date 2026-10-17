@@ -67,9 +67,15 @@ const conversationId = computed(() => {
   return typeof id === 'string' && id.length > 0 ? id : null
 })
 
-/** The conversation the route names, as the sidebar list holds it. */
+/**
+ * The conversation the route names. Deliberately not from `conversations`, which
+ * is the answer to the sidebar's search: an open conversation whose title does
+ * not match the term is absent from that list, which would blank the header title
+ * and leave the model guard seeing "unknown" (FR-11, FR-23). `known` holds every
+ * row the session has seen.
+ */
 const activeConversation = computed(() =>
-  conversations.conversations.find((item) => item.id === conversationId.value),
+  conversationId.value === null ? undefined : conversations.known[conversationId.value],
 )
 
 const title = computed(() => activeConversation.value?.title ?? '')
