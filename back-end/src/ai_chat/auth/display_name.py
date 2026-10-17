@@ -15,6 +15,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from ai_chat.auth.exceptions import InvalidDisplayNameError
+
 # The column's width and the cap on a name (FR-7).
 MAX_DISPLAY_NAME_LENGTH = 50
 
@@ -80,14 +82,6 @@ _LEET_FOLD = str.maketrans(
         "$": "s",
     }
 )
-
-
-class InvalidDisplayNameError(ValueError):
-    """A name that may not be stored, carrying the reason to show.
-
-    A `ValueError`, so the schema validator raising it becomes an ordinary 422
-    with this message; the domain rule stays in the domain module.
-    """
 
 
 def normalise_display_name(raw: str) -> str:

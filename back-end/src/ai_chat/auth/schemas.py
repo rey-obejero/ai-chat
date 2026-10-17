@@ -2,7 +2,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
 
-from ai_chat.auth.display_name import validate_display_name
 from ai_chat.llm import ResponseStyle
 
 # The cap on standing instructions (FR-24). They ride every reply, so they are
@@ -83,11 +82,6 @@ class ProfileUpdate(BaseModel):
         if value is None:
             raise ValueError(f"{info.field_name} may not be null; omit it instead.")
         return value
-
-    @field_validator("display_name")
-    @classmethod
-    def _valid_name(cls, value: str) -> str:
-        return validate_display_name(value)
 
 
 class SocialProviderRead(BaseModel):
