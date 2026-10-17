@@ -41,10 +41,13 @@ seconds. Three problems follow, and none is hypothetical at chat scale:
   A unique constraint on `(conversation_id, role, client_id)` makes a retry a
   structural no-op; a duplicate is answered with the already-stored reply rather
   than a second write. The constraint is scoped by role because a single key
-  names one turn: an edit carries the *target user turn's* key, and the reply it
-  produces must be insertable alongside it. Send mints a key per user turn; a
-  regenerate mints a fresh key for the reply it produces. Every lookup is
-  role-scoped, so the looser constraint does not weaken the guarantee.
+  names one turn. Send mints a key per user turn; an edit and a regenerate each
+  mint a fresh key for the reply they produce, so a later write against the same
+  turn is its own attempt rather than a replay of the first — the retry that must
+  replay carries the same key. An edit names the turn it replaces in
+  `target_client_id`, because one key can no longer serve as both the attempt's
+  identity and the target's. Every lookup is role-scoped, so the looser
+  constraint does not weaken the guarantee.
 - **Client-owned turn identity.** A locally-sent turn is addressed by the
   `client_id` it was created with, because the SDK assigns its own non-uuid id
   to the message it appends. The edit route resolves its target by server uuid
@@ -54,6 +57,12 @@ seconds. Three problems follow, and none is hypothetical at chat scale:
   provider chunks; on a disconnect it closes the provider stream, keeps the
   accumulated text as the reply (stopped semantics), records the usage already
   spent, and clears the gate.
+- **A delete racing a stream.** A delete is deliberately not gated, so the
+  conversation can be gone before a reply completes. The reply and the activity
+  stamp are then dropped — there is nothing left for them to belong to — while
+  the reply's spend is still recorded, against no conversation: the tokens were
+  paid for whatever became of the conversation they were spent in, and the ledger
+  is the record of that.
 
 ## Consequences
 
