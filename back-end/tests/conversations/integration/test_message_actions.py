@@ -179,7 +179,7 @@ async def test_editing_a_user_message_replaces_it_and_truncates_everything_after
 
 
 async def test_a_live_turn_is_editable_by_its_client_id(app, client, session_factory) -> None:
-    """The path id is the client's own, non-server id; the key addresses the turn."""
+    """The path id is the client's own, non-server id; the turn's key addresses it."""
     key = uuid.uuid4()
     conversation_id = await _seed(
         session_factory,
@@ -194,9 +194,11 @@ async def test_a_live_turn_is_editable_by_its_client_id(app, client, session_fac
     calls: list[int] = []
     _use_provider(app, [ChatChunk(content="edited reply")], calls=calls)
     url = f"/api/v1/conversations/{conversation_id}/messages/ui-message-1/edit"
+    attempt = str(uuid.uuid4())
 
-    response = await client.post(url, json={"content": "edited", "client_id": str(key)})
-    retry = await client.post(url, json={"content": "edited", "client_id": str(key)})
+    body = {"content": "edited", "client_id": attempt, "target_client_id": str(key)}
+    response = await client.post(url, json=body)
+    retry = await client.post(url, json=body)
 
     assert response.status_code == 200
     assert retry.status_code == 200
@@ -205,6 +207,33 @@ async def test_a_live_turn_is_editable_by_its_client_id(app, client, session_fac
         ("assistant", "edited reply"),
     ]
     assert len(calls) == 1, "the retry replays the reply instead of rewriting again"
+
+
+async def test_a_second_edit_of_the_same_turn_is_a_new_attempt(
+    app, client, session_factory
+) -> None:
+    """A later edit is not the first one's replay: each attempt mints its own key."""
+    conversation_id = await _seed(
+        session_factory, messages=[("user", "original"), ("assistant", "first reply")]
+    )
+    _current_user(app)
+    calls: list[int] = []
+    _use_provider(app, [ChatChunk(content="edited reply")], calls=calls)
+    message_id = await _message_id(session_factory, conversation_id, role="user")
+    url = f"/api/v1/conversations/{conversation_id}/messages/{message_id}/edit"
+
+    first = await client.post(url, json={"content": "edited", "client_id": str(uuid.uuid4())})
+    second = await client.post(
+        url, json={"content": "edited again", "client_id": str(uuid.uuid4())}
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert len(calls) == 2, "the second edit is its own attempt, not the first one's replay"
+    assert await _history(client, conversation_id) == [
+        ("user", "edited again"),
+        ("assistant", "edited reply"),
+    ]
 
 
 async def test_a_foreign_path_id_still_resolves_by_the_key(app, client, session_factory) -> None:
@@ -217,7 +246,7 @@ async def test_a_foreign_path_id_still_resolves_by_the_key(app, client, session_
 
     response = await client.post(
         f"/api/v1/conversations/{conversation_id}/messages/{foreign}/edit",
-        json={"content": "edited", "client_id": str(key)},
+        json={"content": "edited", "target_client_id": str(key)},
     )
 
     assert response.status_code == 200

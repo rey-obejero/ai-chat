@@ -17,12 +17,19 @@ export interface ConversationAction {
   messageId?: string
   /**
    * The write's key. An append mints the key that names its new user turn; an
-   * edit carries the key of the turn it targets, which is how a turn this
-   * session never learned the server uuid of is addressed; a regenerate mints a
-   * fresh key for its reply. Absent only for a restored turn that has no key,
-   * which then resolves by the uuid in its path.
+   * edit mints a fresh key for the reply it produces, so a later edit of the
+   * same turn is a new edit rather than a replay of the first; a regenerate
+   * mints a fresh key for its reply. Absent only for a restored turn that has
+   * no key, which then resolves by the uuid in its path.
    */
   clientId?: string
+  /**
+   * The key the target turn's own send used, carried by an edit. A turn this
+   * session sent is addressed by its local id, which the server cannot resolve,
+   * so the key travels in the body instead. Absent for a restored turn, whose
+   * path is a server uuid.
+   */
+  targetClientId?: string
 }
 
 /**
@@ -64,20 +71,23 @@ export function beginAppend(): string {
  * Point the next request at an edit or a regeneration. Set immediately before
  * the call; reset straight after with {@link resetConversationAction}.
  *
- * An edit passes the target turn's key, which the route resolves the row by and
- * which also keys the reply the edit streams — so a retry of the same edit is a
- * replay rather than a second reply. A regenerate mints its own key for the new
- * reply, because the target is addressed by its server uuid.
+ * An edit mints a fresh key for the reply the edit produces, which is what makes
+ * a retry of that attempt a replay rather than a second reply, and passes the
+ * *target* turn's key separately, because the path may be a local id the server
+ * cannot resolve. A regenerate mints its own key for the new reply, because the
+ * target is addressed by its server uuid.
  */
 export function setConversationAction(action: {
   kind: 'edit' | 'regenerate'
   messageId: string
   clientId?: string
+  targetClientId?: string
 }): void {
   conversationAction.value = {
     kind: action.kind,
     messageId: action.messageId,
     clientId: action.clientId ?? newClientId(),
+    targetClientId: action.targetClientId,
   }
 }
 
@@ -186,7 +196,8 @@ async function problemAwareFetch(input: RequestInfo | URL, init?: RequestInit): 
  *
  * The path segment stays the id the view holds: the local id for a turn this
  * session sent, the server uuid for a restored one. The API resolves it as a
- * uuid first and falls back to the key in the body, so both work.
+ * uuid first and falls back to the turn's own key in the body (`target_client_id`,
+ * for an edit), so both work.
  */
 export function createConversationTransport(
   conversationId: () => string | null,
@@ -200,12 +211,17 @@ export function createConversationTransport(
       const current = action()
       // A restored turn with no key is addressed by the uuid in its path alone.
       const key = current.clientId === undefined ? {} : { client_id: current.clientId }
+      // An edit names its target separately from the attempt's key: the path may
+      // be this client's own local id, which the server cannot resolve, so the
+      // turn's key goes in the body.
+      const target =
+        current.targetClientId === undefined ? {} : { target_client_id: current.targetClientId }
 
       switch (current.kind) {
         case 'edit':
           return {
             api: `/api/v1/conversations/${id}/messages/${current.messageId}/edit`,
-            body: { content: lastUserText(messages), ...key },
+            body: { content: lastUserText(messages), ...key, ...target },
           }
         case 'regenerate':
           return {

@@ -233,9 +233,10 @@ async def edit_message(
 
     The turn is addressed either by its server uuid — what ``GET /messages``
     returns — or, for a turn sent in this session, by the key its send used
-    (``client_id``); a client-owned local id in the path is simply ignored.
-    Either way ``client_id`` is the write's key, so a retried edit replays the
-    reply it already produced instead of spending tokens again (H3).
+    (``target_client_id``); a client-owned local id in the path is simply
+    ignored. ``client_id`` is this attempt's own key, so a retried edit replays
+    the reply it already produced instead of spending tokens again (H3), while a
+    later edit of the same turn is a new attempt rather than that replay.
     """
     conversation = await get_owned_conversation(session, user_id, conversation_id)
 
@@ -249,7 +250,7 @@ async def edit_message(
         if replayed is not None:
             return replayed
 
-    message = await _resolve_user_turn(session, conversation, message_id, payload.client_id)
+    message = await _resolve_user_turn(session, conversation, message_id, payload.target_client_id)
 
     await begin_generation(session, conversation, settings=_settings(request))
     await replace_content(session, message, payload.content)
@@ -321,14 +322,14 @@ async def _resolve_user_turn(
     session: AsyncSession,
     conversation: Conversation,
     message_id: str,
-    client_id: uuid.UUID | None,
+    target_client_id: uuid.UUID | None,
 ) -> Message:
     """The user turn an edit targets, by server uuid or by the key its send used.
 
     The uuid wins when it names a message of this conversation, so a path that
     is one still means exactly that row — including the 409 when that row is not
     a user's. A path that is the client's own local id resolves nothing and
-    falls through to the key.
+    falls through to the turn's key.
     """
     identifier = _as_uuid(message_id)
     if identifier is not None:
@@ -338,7 +339,9 @@ async def _resolve_user_turn(
                 raise InvalidOperationError(detail="Only user messages can be edited.")
             return message
 
-    message = await find_message_by_client_id(session, conversation.id, client_id, role=USER_ROLE)
+    message = await find_message_by_client_id(
+        session, conversation.id, target_client_id, role=USER_ROLE
+    )
     if message is None:
         raise NotFoundError(detail="Message not found.")
     return message
