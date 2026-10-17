@@ -5,7 +5,9 @@ Three checks behind one validator, run before the account exists:
 1. length — the SDK's own floor, re-checked here so the validator is
    self-contained;
 2. entropy and commonness — `zxcvbn` scores a password 0–4, and its bundled
-   dictionaries are the "common patterns" data, so no list is maintained here;
+   dictionaries are the "common patterns" data, so no list is maintained here.
+   Its own scoring stops at 72 characters, so a longer passphrase is scored on
+   its prefix rather than refused;
 3. breach data — the HIBP range API, queried without the password ever leaving
    the server.
 
@@ -29,6 +31,11 @@ from ai_chat.shared.config import Settings, get_settings
 logger = logging.getLogger(__name__)
 
 MIN_LENGTH = 8
+
+# `zxcvbn` raises on input longer than this instead of scoring a prefix, and a
+# long passphrase is a legitimate choice, so the score is taken from the first
+# 72 characters. The breach check still hashes the whole password.
+ZXCVBN_MAX_LENGTH = 72
 _HIBP_RANGE_URL = "https://api.pwnedpasswords.com/range/{prefix}"
 
 
@@ -110,7 +117,7 @@ async def validate_password(
     if len(password) < MIN_LENGTH:
         raise WeakPasswordError(f"Password must be at least {MIN_LENGTH} characters.")
 
-    score = zxcvbn(password)["score"]
+    score = zxcvbn(password[:ZXCVBN_MAX_LENGTH])["score"]
     if score < settings.password_min_score:
         raise WeakPasswordError(
             "Password is too easy to guess. Use a longer phrase, without common "
