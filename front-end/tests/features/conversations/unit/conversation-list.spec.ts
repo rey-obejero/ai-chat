@@ -1,8 +1,8 @@
-import { mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import type { MenuItem } from 'primevue/menuitem'
 import Tooltip from 'primevue/tooltip'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, type PropType } from 'vue'
 
 import type { Conversation } from '@/features/conversations/api'
@@ -44,9 +44,12 @@ function conversation(overrides: Partial<Conversation> & { id: string }): Conver
   }
 }
 
-function mountList(conversations: Conversation[]): VueWrapper {
+function mountList(
+  conversations: Conversation[],
+  rename: (id: string, title: string) => Promise<boolean> = async () => true,
+): VueWrapper {
   return mount(ConversationList, {
-    props: { conversations },
+    props: { conversations, rename },
     global: {
       plugins: [PrimeVue],
       directives: { tooltip: Tooltip },
@@ -101,7 +104,11 @@ describe('ConversationList rows', () => {
 
   it('marks the selected row for assistive technology', () => {
     const wrapper = mount(ConversationList, {
-      props: { conversations: [conversation({ id: 'a', title: 'First' })], activeId: 'a' },
+      props: {
+        conversations: [conversation({ id: 'a', title: 'First' })],
+        activeId: 'a',
+        rename: async () => true,
+      },
       global: {
         plugins: [PrimeVue],
         directives: { tooltip: Tooltip },
@@ -115,7 +122,8 @@ describe('ConversationList rows', () => {
 
 describe('ConversationList inline rename', () => {
   it('turns the row into a field and saves on Enter', async () => {
-    const wrapper = mountList([conversation({ id: 'a', title: 'First' })])
+    const rename = vi.fn(async () => true)
+    const wrapper = mountList([conversation({ id: 'a', title: 'First' })], rename)
     await openMenu(wrapper)
 
     expect(renameField(wrapper).exists()).toBe(false)
@@ -127,10 +135,27 @@ describe('ConversationList inline rename', () => {
 
     await field.setValue('  Renamed  ')
     await field.trigger('keydown.enter')
+    await flushPromises()
 
-    expect(wrapper.emitted('rename')).toEqual([['a', 'Renamed']])
+    expect(rename).toHaveBeenCalledWith('a', 'Renamed')
     expect(renameField(wrapper).exists()).toBe(false)
     expect(wrapper.text()).toContain('First')
+  })
+
+  it('keeps the field open with the typed title when the write is refused', async () => {
+    const rename = vi.fn(async () => false)
+    const wrapper = mountList([conversation({ id: 'a', title: 'First' })], rename)
+    await openMenu(wrapper)
+    await menuItem(wrapper, 'Rename').trigger('click')
+
+    await renameField(wrapper).setValue('Renamed')
+    await renameField(wrapper).trigger('keydown.enter')
+    await flushPromises()
+
+    // A refusal must not discard the edit: the field is still there with it.
+    expect(rename).toHaveBeenCalledWith('a', 'Renamed')
+    expect(renameField(wrapper).exists()).toBe(true)
+    expect((renameField(wrapper).element as HTMLInputElement).value).toBe('Renamed')
   })
 
   it('cancels on Escape without writing anything', async () => {
