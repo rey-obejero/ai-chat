@@ -45,6 +45,33 @@ beforeEach(() => {
   vi.resetAllMocks()
 })
 
+describe('conversations store memory', () => {
+  it('remembers a row a later search drops from the list', async () => {
+    listMock.mockResolvedValue(page([conversation({ id: 'alpha', title: 'alpha note' })]))
+    const store = useConversationsStore()
+    await store.load()
+
+    // A search the open conversation does not match: the list stops holding it,
+    // while the header title and the model guard still need that row (FR-11, FR-23).
+    listMock.mockResolvedValue(page([conversation({ id: 'beta', title: 'beta note' })]))
+    await store.search('beta')
+
+    expect(store.conversations.map((row) => row.id)).toEqual(['beta'])
+    expect(store.known['alpha']?.title).toBe('alpha note')
+  })
+
+  it('forgets a row it deleted', async () => {
+    listMock.mockResolvedValue(page([conversation({ id: 'alpha' })]))
+    deleteMock.mockResolvedValue(undefined)
+    const store = useConversationsStore()
+    await store.load()
+
+    await store.remove('alpha')
+
+    expect(store.known['alpha']).toBeUndefined()
+  })
+})
+
 describe('conversations store loading', () => {
   it('loads the first page pinned-first, then by most recent activity', async () => {
     listMock.mockResolvedValue(
