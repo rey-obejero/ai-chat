@@ -96,6 +96,7 @@ async function skip(): Promise<void> {
           id="name-prompt-name"
           v-model="name"
           fluid
+          autofocus
           autocomplete="nickname"
           :maxlength="DISPLAY_NAME_MAX_LENGTH"
           @keydown.enter="save"
