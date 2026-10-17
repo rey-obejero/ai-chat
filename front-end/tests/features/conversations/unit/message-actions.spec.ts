@@ -180,7 +180,12 @@ describe('createConversationTransport routing', () => {
   })
 
   it('posts the newest user text to the edit route of the target message', async () => {
-    const action: ConversationAction = { kind: 'edit', messageId: 'm1', clientId: 'client-edit-1' }
+    const action: ConversationAction = {
+      kind: 'edit',
+      messageId: 'm1',
+      clientId: 'client-edit-1',
+      targetClientId: 'client-target-1',
+    }
     const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -194,9 +199,20 @@ describe('createConversationTransport routing', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('/api/v1/conversations/conv-1/messages/m1/edit')
 
-    const body = JSON.parse(init.body as string) as { content: string; client_id: string }
-    expect(body).toEqual({ content: 'hello there', client_id: action.clientId })
-    expect(body.client_id).toBe(action.clientId)
+    const body = JSON.parse(init.body as string) as {
+      content: string
+      client_id: string
+      target_client_id: string
+    }
+    // The attempt's own key and the target turn's key travel separately: the path
+    // holds a local id the server cannot resolve, and the fresh key is what makes
+    // a later edit a new edit rather than this one's replay.
+    expect(body).toEqual({
+      content: 'hello there',
+      client_id: action.clientId,
+      target_client_id: action.targetClientId,
+    })
+    expect(body.client_id).not.toBe(body.target_client_id)
   })
 
   it('posts only the client id to the regenerate route of the target message', async () => {

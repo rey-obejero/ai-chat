@@ -397,13 +397,20 @@ async function editMessage(message: UIMessage): Promise<void> {
   // The turn's own key addresses it in the request, because a user turn sent in
   // this session never learned the server uuid; `messageId` keeps the path and
   // makes the SDK replace that turn in place and drop everything after it.
-  const clientId = messageClientId(message)
-  setConversationAction({ kind: 'edit', messageId: message.id, clientId })
+  // The attempt's own key is minted fresh, so a later edit of this turn is a new
+  // edit rather than a replay of this one; the turn's own key travels separately,
+  // and stays on the replaced turn so a later edit can name it again.
+  const targetClientId = messageClientId(message)
+  setConversationAction({
+    kind: 'edit',
+    messageId: message.id,
+    targetClientId,
+  })
   try {
     await chat.sendMessage({
       text: messageText(message),
       messageId: message.id,
-      metadata: clientId === undefined ? undefined : { clientId },
+      metadata: targetClientId === undefined ? undefined : { clientId: targetClientId },
     })
   } finally {
     resetConversationAction()

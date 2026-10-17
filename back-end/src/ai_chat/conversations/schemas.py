@@ -83,11 +83,15 @@ class MessageCreate(BaseModel):
 
 class MessageEdit(BaseModel):
     content: str = Field(min_length=1, max_length=8000)
-    # The key of the turn being edited — the one its send used, echoed by
-    # `MessageRead.client_id`. A live turn has no server uuid yet (the client
-    # owns its id), so the key is what addresses it; it doubles as the write's
-    # idempotency key, because a retried edit carries the same turn.
+    # This attempt's own key, so a retried edit replays the reply it already
+    # produced instead of generating a second one (H3). Minting a fresh key per
+    # attempt is what makes a later edit of the same turn a new edit rather than
+    # that replay.
     client_id: uuid.UUID | None = None
+    # The turn being edited: the key its send used, echoed by
+    # `MessageRead.client_id`. A live turn has no server uuid yet (the client
+    # owns its id), so this is what addresses it when the path cannot.
+    target_client_id: uuid.UUID | None = None
 
 
 class MessageRegenerate(BaseModel):
