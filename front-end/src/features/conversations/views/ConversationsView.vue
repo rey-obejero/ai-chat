@@ -576,6 +576,7 @@ async function signOut(): Promise<void> {
               :models="models"
               :disabled="!canSend"
               :busy="busy"
+              palette-placement="below"
               @submit="submit"
               @stop="stop"
             />

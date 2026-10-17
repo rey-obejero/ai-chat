@@ -241,7 +241,7 @@ It opens when the draft begins with `/` and the text field holds the caret. The 
 
 Selecting a command — the highlighted one on Enter or Tab, or the clicked one — replaces the leading `/filter` with that command's template and returns the caret to the end of the draft, so the user can add detail before sending. The palette never sends a message: a command is a local prompt template, not a server feature, so its invocation is editable text the user still has to send. Enter therefore belongs to the palette while it is open, matched or not, and a lone slash cannot submit. Shift+Enter stays with the draft, since it never submits.
 
-**Surface.** Paper White fill, 1px Line border, 12px radius, `elevated` shadow, and 6px padding, anchored above the card with an 8px gap. It is capped at 16rem tall and scrolls past that. Rows are 8px/12px with an 8px radius, one command each: the label in Ink and the description in Subtext, both at body-sm.
+**Surface.** Paper White fill, 1px Line border, 12px radius, `elevated` shadow, and 6px padding, anchored to the card with an 8px gap. It opens above the card, except on the empty state, where the card is anchored near the top of a scroll container: a popup reaching past that container's top edge is clipped by it whatever its z-index, so there the palette opens below the card instead. It is capped at 16rem tall and scrolls past that. Rows are 8px/12px with an 8px radius, one command each: the label in Ink and the description in Subtext, both at body-sm.
 
 The row under the highlight fills with Line at 40%. That is the hover step rather than the Selected state: the highlight is a transient cursor, and Line at 60% would claim a persistence a popup cursor does not have.
 

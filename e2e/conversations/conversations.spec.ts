@@ -277,6 +277,36 @@ test("opens the command palette on a slash and inserts without sending", async (
   await expect(page.getByRole("log").getByText(/^Mock reply/)).toHaveCount(0);
 });
 
+test("cannot send an invocation, and follows the caret", async ({ signUpPage, page }) => {
+  await signUpFreshAccount(signUpPage);
+  await page.getByRole("button", { name: "New conversation" }).click();
+
+  const composer = page.getByRole("textbox", { name: "Message" });
+  const palette = page.getByRole("listbox", { name: "Commands" });
+  const send = page.getByRole("button", { name: "Send" });
+
+  await composer.click();
+  await composer.pressSequentially("/");
+  await expect(palette).toBeVisible();
+  // A lone slash is the palette's text, not a message: Send is not a way around
+  // the rule that Enter belongs to the palette.
+  await expect(send).toBeDisabled();
+
+  // The caret leaving closes the palette and leaves the draft alone; coming back
+  // reopens it, because the draft still invokes a command.
+  await composer.blur();
+  await expect(palette).toHaveCount(0);
+  await expect(composer).toHaveValue("/");
+  await composer.focus();
+  await expect(palette).toBeVisible();
+
+  // With an argument in the draft it is ordinary text, and it sends.
+  await composer.pressSequentially("translate hello");
+  await expect(send).toBeEnabled();
+  await send.click();
+  await expect(page.getByRole("log").getByText("/translate hello", { exact: true })).toBeVisible();
+});
+
 test("switches the model and discloses the switch", async ({ signUpPage, page }) => {
   await signUpFreshAccount(signUpPage);
   await page.getByRole("button", { name: "New conversation" }).click();
