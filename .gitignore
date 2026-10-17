@@ -9,6 +9,10 @@ front-end/dist/
 front-end/.vite/
 *.local
 .pnpm-store/
+# pnpm owns the lockfile here; another manager's must not be committed by accident.
+bun.lock
+package-lock.json
+yarn.lock
 
 # Playwright
 e2e/test-results/
