@@ -4,9 +4,12 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import update
+
 from ai_chat.auth import get_current_user_id
 from ai_chat.auth.models import User
 from ai_chat.conversations.models import Conversation, Message
+from ai_chat.conversations.streaming import _persist_assistant_message
 from ai_chat.llm import STYLE_FRAGMENTS, ChatChunk, ResponseStyle, get_chat_provider
 
 OWNER = "user-1"
@@ -181,6 +184,44 @@ async def test_a_switch_persists_a_caption_and_applies_to_the_next_reply(
     # goes to the model the caption named.
     assert provider.sent == [[("user", "Hello"), caption, ("user", "Now in the other model")]]
     assert provider.models == [SECOND_MODEL]
+
+
+async def test_a_caption_written_mid_stream_sorts_after_the_reply(
+    two_model_app, two_model_client, session_factory
+) -> None:
+    """The switch's caption belongs after the answer it interrupted (FR-23).
+
+    A reply is stamped with the moment its stream began, so a caption written
+    while it was still streaming cannot land in front of it and claim an answer
+    the previous model made.
+    """
+    conversation_id = await _seed(session_factory, messages=[("user", "Hello")])
+    _current_user(two_model_app)
+    async with session_factory() as session:
+        # The turn happened a while ago; the reply below began a second ago.
+        await session.execute(
+            update(Message).values(created_at=datetime.now(UTC) - timedelta(seconds=10))
+        )
+        await session.commit()
+    started = datetime.now(UTC) - timedelta(seconds=1)
+
+    # The switch lands while the reply is still streaming…
+    response = await two_model_client.patch(
+        f"/api/v1/conversations/{conversation_id}", json={"model": SECOND_MODEL}
+    )
+    assert response.status_code == 200, response.text
+
+    # …and the reply lands afterwards, stamped with the moment its stream began.
+    await _persist_assistant_message(
+        session_factory, uuid.uuid4(), conversation_id, "Answer from the old model", started
+    )
+
+    transcript = await _transcript(two_model_client, conversation_id)
+    assert [(role, content.startswith("Model set to")) for role, content in transcript] == [
+        ("user", False),
+        ("assistant", False),
+        ("system", True),
+    ]
 
 
 async def test_saving_the_model_a_conversation_already_has_writes_no_caption(

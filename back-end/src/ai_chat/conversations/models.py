@@ -118,7 +118,10 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text)
     # A Python-side default as well as the server default: Postgres timestamps
     # are microsecond-precise but SQLite's are not, and ordering a conversation
-    # depends on insert order being recoverable in both.
+    # depends on insert order being recoverable in both. A streamed reply is
+    # stamped with the moment its stream began rather than the moment it was
+    # written, so a caption that lands mid-stream sorts after the answer it
+    # interrupted rather than in front of it (FR-23).
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
