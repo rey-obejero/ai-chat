@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { useSessionStore, VerificationResend } from '@/features/auth'
 import { formatTokens } from '../format'
 import { useUsageStore } from '../stores/usage'
 
 const usage = useUsageStore()
+const session = useSessionStore()
 
 const state = computed(() => usage.usage)
 const percentUsed = computed(() => {
@@ -23,6 +25,23 @@ const resetsAt = computed(() => {
     month: 'long',
     day: 'numeric',
   })
+})
+
+/**
+ * The reduced allowance's figures, or null when the allowance is not reduced by
+ * an unverified address (FR-4, ADR-0039). The panel reports the effective limit,
+ * so without this the figure below looks arbitrary for the whole period and its
+ * reason only arrives when the limit is hit.
+ */
+const verificationGap = computed(() => {
+  const value = state.value
+  if (value === null || value.limit === null || value.full_limit === null) {
+    return null
+  }
+  if (session.user?.email_verified !== false || value.limit >= value.full_limit) {
+    return null
+  }
+  return { limit: value.limit, full: value.full_limit }
 })
 </script>
 
@@ -58,6 +77,15 @@ const resetsAt = computed(() => {
         aria-valuemax="100"
       >
         <div class="h-full rounded-full bg-ink" :style="{ width: `${percentUsed}%` }" />
+      </div>
+
+      <div v-if="verificationGap" class="space-y-2 rounded-lg border border-line p-3">
+        <p class="text-body-sm text-ink">
+          Your email isn't verified, so your allowance is
+          {{ formatTokens(verificationGap.limit) }} of {{ formatTokens(verificationGap.full) }}.
+          Verify it to unlock the rest.
+        </p>
+        <VerificationResend />
       </div>
     </template>
   </div>

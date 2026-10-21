@@ -35,6 +35,9 @@ async def read_usage(
     return UsageRead(
         used=used,
         limit=limit,
+        # What a verified account gets, so a reduced limit can be explained
+        # rather than merely reported (FR-4).
+        full_limit=settings.token_quota_tokens if limit is not None else None,
         remaining=remaining,
         period_start=start,
         resets_at=resets_at,

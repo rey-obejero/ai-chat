@@ -53,6 +53,7 @@ async def test_usage_route_reports_the_remaining_budget(
     body = response.json()
     assert body["used"] == 400
     assert body["limit"] == 1000
+    assert body["full_limit"] == 1000
     assert body["remaining"] == 600
 
 
@@ -73,4 +74,7 @@ async def test_usage_route_reports_the_reduced_allowance_when_unverified(
     assert response.status_code == 200
     body = response.json()
     assert body["limit"] == 500
+    # The reduced allowance is still reported against the full one, which is what
+    # lets the client say why it is lower (FR-4).
+    assert body["full_limit"] == 1000
     assert body["remaining"] == 100

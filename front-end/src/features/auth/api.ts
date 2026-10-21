@@ -13,6 +13,11 @@ export interface User {
   display_name: string
   /** Whether the first-run name prompt has been answered (FR-7). */
   name_prompt_seen: boolean
+  /**
+   * Whether the address has been confirmed. Unverified accounts get a reduced
+   * token allowance, so this is what explains that figure (FR-4).
+   */
+  email_verified: boolean
   /** The account's standing instructions, or null when there are none (FR-24). */
   instructions: string | null
   /** The style replies are written in (FR-25); `default` adds no prompt text. */
