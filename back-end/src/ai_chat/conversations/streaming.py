@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from datetime import UTC, datetime
 
 import anyio
 from sqlalchemy.exc import IntegrityError
@@ -76,6 +77,11 @@ async def stream_reply(
     conversation's generation gate (H4).
     """
     message_id = uuid.uuid4()
+    # When this stream began. The reply is stamped with it rather than with the
+    # moment it happened to finish, so a write that lands mid-stream — a model
+    # switch's caption is the one that does — sorts after the answer it
+    # interrupted instead of in front of it, claiming an answer it did not make.
+    started_at = datetime.now(UTC)
     text_id = f"text_{uuid.uuid4().hex}"
     collected: list[str] = []
     usage: TokenUsage | None = None
@@ -128,7 +134,7 @@ async def stream_reply(
         if content:
             try:
                 await _persist_assistant_message(
-                    session_factory, message_id, conversation_id, content, client_id
+                    session_factory, message_id, conversation_id, content, started_at, client_id
                 )
             except Exception:
                 keep_partial = False
@@ -152,7 +158,7 @@ async def stream_reply(
             await _aclose(chunks)
             if keep_partial:
                 await _persist_partial(
-                    session_factory, message_id, conversation_id, collected, client_id
+                    session_factory, message_id, conversation_id, collected, started_at, client_id
                 )
             await _clear_gate(session_factory, conversation_id)
 
@@ -173,6 +179,7 @@ async def _persist_partial(
     message_id: uuid.UUID,
     conversation_id: uuid.UUID,
     collected: Sequence[str],
+    started_at: datetime,
     client_id: uuid.UUID | None,
 ) -> None:
     """Keep the text produced before a disconnect; the tokens are spent anyway."""
@@ -181,7 +188,7 @@ async def _persist_partial(
         return
     try:
         await _persist_assistant_message(
-            session_factory, message_id, conversation_id, content, client_id
+            session_factory, message_id, conversation_id, content, started_at, client_id
         )
     except Exception:
         logger.exception("Failed to keep the partial reply for conversation %s", conversation_id)
@@ -222,6 +229,7 @@ async def _persist_assistant_message(
     message_id: uuid.UUID,
     conversation_id: uuid.UUID,
     content: str,
+    started_at: datetime,
     client_id: uuid.UUID | None = None,
 ) -> None:
     # The request-scoped session is already closed by the time the body streams,
@@ -233,6 +241,7 @@ async def _persist_assistant_message(
                 conversation_id=conversation_id,
                 role=ASSISTANT_ROLE,
                 content=content,
+                created_at=started_at,
                 client_id=client_id,
             )
         )
