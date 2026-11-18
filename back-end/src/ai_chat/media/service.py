@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import socket
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -118,13 +118,13 @@ def _lookup(host: str, port: int) -> list[tuple]:
 class DnsAddressResolver:
     """Resolves a host, rejecting the whole answer if any address is private."""
 
-    def __init__(self, lookup: object = _lookup) -> None:
+    def __init__(self, lookup: Callable[[str, int], list[tuple]] = _lookup) -> None:
         self._lookup = lookup
 
     async def resolve(self, host: str, port: int) -> str:
         loop = asyncio.get_running_loop()
         try:
-            infos = await loop.run_in_executor(None, self._lookup, host, port)
+            infos: list[tuple] = await loop.run_in_executor(None, self._lookup, host, port)
         except socket.gaierror as exc:
             raise MediaFetchError("Media URL host could not be resolved") from exc
         return _first_public_address(infos)

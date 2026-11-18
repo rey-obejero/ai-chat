@@ -7,8 +7,10 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 from sqlalchemy import and_, delete, exists, or_, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -459,7 +461,7 @@ async def begin_generation(
         .values(generating_at=now)
         .execution_options(synchronize_session=False)
     )
-    if result.rowcount == 0:
+    if cast(CursorResult[Any], result).rowcount == 0:
         raise ConversationBusyError(detail="A reply is already being generated.")
     conversation.generating_at = now
 

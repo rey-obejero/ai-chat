@@ -6,6 +6,7 @@ import inspect
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import cast
 
 from limits import parse
 from limits.aio import strategies
@@ -39,7 +40,7 @@ def build_storage(uri: str) -> Storage:
     """
     if uri.startswith(_REDIS_SCHEMES):
         return RedisStorage(uri, implementation="redispy", wrap_exceptions=True)
-    return storage_from_string(uri)
+    return cast(Storage, storage_from_string(uri))
 
 
 class RateLimiter:

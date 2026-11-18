@@ -84,6 +84,17 @@ from ai_chat.shared.exceptions import PROBLEM_JSON, problem_body
 
 logger = logging.getLogger(__name__)
 
+
+def _override_interface(target: object, name: str, fn: object) -> None:
+    """Replace one method on an SDK interface instance we are wrapping.
+
+    The SDK's interfaces are protocols whose methods we patch deliberately;
+    ``setattr`` states that intent and keeps the type checker from rejecting
+    the assignment as a method rebinding.
+    """
+    setattr(target, name, fn)
+
+
 _PLACEHOLDER_EMAIL_DOMAIN = "unknown.local"
 
 # The email delivery types are parameterized by template vars, and one
@@ -315,7 +326,7 @@ def _revoke_sessions_on_password_change(original: RecipeInterface) -> RecipeInte
             await revoke_all_sessions(recipe_user_id.get_as_string())
         return result
 
-    original.update_email_or_password = update_email_or_password
+    _override_interface(original, "update_email_or_password", update_email_or_password)
     return original
 
 
@@ -420,8 +431,8 @@ def _screen_passwords(settings: Settings) -> Callable[[RecipeInterface], RecipeI
                 user_context=user_context,
             )
 
-        original.sign_up = sign_up
-        original.update_email_or_password = update_email_or_password
+        _override_interface(original, "sign_up", sign_up)
+        _override_interface(original, "update_email_or_password", update_email_or_password)
         return original
 
     return override
@@ -468,7 +479,7 @@ def _forget_cached_verification_state(
             forget_email_verified(result.user.recipe_user_id.get_as_string())
         return result
 
-    original.verify_email_using_token = verify_email_using_token
+    _override_interface(original, "verify_email_using_token", verify_email_using_token)
     return original
 
 
@@ -536,7 +547,7 @@ def _refuse_sign_in_when_email_exists(
             user_context=user_context,
         )
 
-    original.sign_in_up = sign_in_up
+    _override_interface(original, "sign_in_up", sign_in_up)
     return original
 
 

@@ -28,7 +28,7 @@ class ResponseStyle(StrEnum):
 
 # One fixed sentence per style. `default` adds nothing: the prompt is then the
 # account's own words, which is what "no style chosen" has to mean.
-STYLE_FRAGMENTS: dict[ResponseStyle, str] = {
+STYLE_FRAGMENTS: dict[str, str] = {
     ResponseStyle.DEFAULT: "",
     ResponseStyle.CONCISE: (
         "Keep every reply short: answer directly, in plain sentences, without preamble."
