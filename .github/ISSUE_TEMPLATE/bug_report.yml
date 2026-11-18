@@ -1,0 +1,62 @@
+name: Bug report
+description: Something behaves differently from what it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report security vulnerabilities here. See the
+        [security policy](https://github.com/rey-obejero/ai-chat/blob/main/SECURITY.md)
+        for the private route.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The behaviour you saw, and the behaviour you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest sequence that shows the problem. Include the exact message or click path.
+      placeholder: |
+        1. Sign in as ...
+        2. Open a conversation and ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How is it running
+      options:
+        - just development (native)
+        - just development-containerized
+        - self-hosted (Compose, built SPA)
+        - other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The release tag, or the output of `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: API traceback, browser console output, or a screenshot. Remove API keys, session cookies and personal data.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
