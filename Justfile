@@ -69,6 +69,11 @@ front-end:
 test-back-end:
     cd back-end && uv run pytest
 
+# Same suite with coverage; CI runs this form, so the gate is exercised on every
+# push rather than only when someone remembers.
+test-back-end-coverage:
+    cd back-end && uv run pytest --cov --cov-report=term-missing
+
 test-front-end:
     cd front-end && pnpm test
 

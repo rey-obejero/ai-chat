@@ -30,6 +30,8 @@ dev = [
     "aiosqlite>=0.20.0",
     "testcontainers[postgres]>=4.9.0",
     "ruff>=0.9.1",
+    "pytest-cov>=6",
+    "mypy>=2.4.1",
 ]
 
 [build-system]
@@ -63,4 +65,18 @@ extend-immutable-calls = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["src/ai_chat"]
+
+[tool.coverage.report]
+# Measured at 88% when the gate was introduced; 85 leaves room for churn
+# without making a regression invisible.
+fail_under = 85
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true

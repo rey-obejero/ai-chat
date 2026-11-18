@@ -1,0 +1,21 @@
+# Repository-rooted build contexts (front-end/Dockerfile, e2e/Dockerfile) read
+# this file. Host installs and artifacts must never enter an image: a copied
+# node_modules carries symlinks into the host's pnpm store, which do not resolve
+# inside the container.
+
+**/node_modules
+**/dist
+**/.venv
+
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.coverage
+**/htmlcov
+
+e2e/test-results
+e2e/playwright-report
+
+.git
