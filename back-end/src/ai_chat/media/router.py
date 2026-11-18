@@ -55,10 +55,10 @@ def _image_response(image: CachedImage, settings: Settings) -> Response:
     return Response(
         content=image.content,
         # Never echo the origin's header: only our validated allowlist value.
+        # The protective headers are applied once, by the app middleware.
         media_type=image.content_type,
         headers={
             "Cache-Control": f"private, max-age={settings.media_cache_ttl_seconds}",
-            "X-Content-Type-Options": "nosniff",
         },
     )
 

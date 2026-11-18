@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "AI Chat"
+    # Root-logger level; the request identifier is added by the middleware and
+    # rendered by the logging configuration, not configured here.
+    log_level: str = "INFO"
     # Both are the browser origin, which is what makes the session cookie
     # same-site. The native lane serves the SPA on the Vite port and proxies
     # /api to the API, so the API's own port is not the origin (ADR-0046).

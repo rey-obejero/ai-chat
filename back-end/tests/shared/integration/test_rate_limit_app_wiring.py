@@ -9,7 +9,7 @@ is invisible until it is under load.
 import httpx
 from limits import parse
 
-from ai_chat.main import create_app
+from ai_chat.main import RequestIdMiddleware, create_app
 from ai_chat.shared.config import Settings
 from ai_chat.shared.rate_limit import RateLimitMiddleware
 
@@ -42,8 +42,9 @@ def test_the_limiter_is_added_after_supertokens(monkeypatch) -> None:
     app = create_app(Settings(_env_file=None, rate_limit_enabled=True), init_auth=True)
 
     classes = [middleware.cls for middleware in app.user_middleware]
-    # Index 0 is outermost; it must be the limiter, not SuperTokens.
-    assert classes[0] is RateLimitMiddleware
+    # The request-id layer is outermost now; what this test pins is that the
+    # limiter still precedes SuperTokens, so it sees every auth request.
+    assert classes[0] is RequestIdMiddleware
     assert classes.index(RateLimitMiddleware) < classes.index(_SentinelMiddleware)
 
 

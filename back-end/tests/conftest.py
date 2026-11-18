@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from ai_chat.main import create_app
 from ai_chat.shared.config import Settings
-from ai_chat.shared.db import Base, get_session, get_session_factory
+from ai_chat.shared.db import Base
 
 # No test reaches another service. The breach check is off for every app built
 # here; a test that exercises screening passes its own settings or a fake client.
@@ -55,13 +55,10 @@ async def session_factory():
 
 def _build_app(session_factory, settings):
     application = create_app(settings, init_auth=False)
-
-    async def override_session():
-        async with session_factory() as session:
-            yield session
-
-    application.dependency_overrides[get_session] = override_session
-    application.dependency_overrides[get_session_factory] = lambda: session_factory
+    # The lifespan never runs under ASGITransport, so the session factory the
+    # lifespan would have built is supplied here instead. Both real dependency
+    # functions resolve through app state, so no dependency overrides remain.
+    application.state.session_factory = session_factory
     return application
 
 
