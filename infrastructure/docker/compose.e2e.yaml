@@ -34,12 +34,12 @@ services:
       # pydantic-settings JSON-decodes list fields from the environment.
       LLM_MODELS: '["e2e/mock","e2e/mock-alt"]'
       # The suite signs in repeatedly and shares rate-limit buckets across
-      # workers; no e2e test asserts rate limiting (the back-end suite covers
+      # workers; no e2e test asserts rate limiting (the backend suite covers
       # the 429 path), so it is off here.
       RATE_LIMIT_ENABLED: "false"
       # A sign-up must not depend on the breach service from CI (ADR-0038): the
       # suite signs up repeatedly, and its fail-open behaviour has its own
-      # back-end tests.
+      # backend tests.
       PASSWORD_BREACH_CHECK_ENABLED: "false"
       # The gated stand-in identity provider (ADR-0029). Off everywhere else.
       TEST_IDP_ENABLED: "true"

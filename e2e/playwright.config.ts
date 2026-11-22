@@ -52,13 +52,13 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command: "pnpm --dir ../front-end dev --port 5173",
+      command: "pnpm --dir ../frontend dev --port 5173",
       url: "http://localhost:5173",
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
-      command: 'bash -lc "cd ../back-end && uv run uvicorn ai_chat.main:app --port 8000"',
+      command: 'bash -lc "cd ../backend && uv run uvicorn ai_chat.main:app --port 8000"',
       url: "http://localhost:8000/api/v1/health",
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
@@ -68,7 +68,7 @@ export default defineConfig({
         LLM_MODEL: "e2e/mock",
         // The suite signs in many times from one address and shares buckets
         // across parallel workers; no e2e test asserts rate limiting, so it is
-        // off here. The 429 path is covered by the back-end suite.
+        // off here. The 429 path is covered by the backend suite.
         RATE_LIMIT_ENABLED: "false",
         // The gated stand-in identity provider (ADR-0029). Off everywhere else.
         TEST_IDP_ENABLED: "true",

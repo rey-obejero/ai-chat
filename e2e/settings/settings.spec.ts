@@ -1,6 +1,6 @@
-import { expect, test } from "../authentication/fixtures";
-import { SignUpPage } from "../authentication/sign-up/SignUpPage";
-import { uniqueEmail } from "../authentication/support/test-user";
+import { expect, test } from "../auth/fixtures";
+import { SignUpPage } from "../auth/sign-up/SignUpPage";
+import { uniqueEmail } from "../auth/support/test-user";
 
 const VALID_PASSWORD = "Passw0rd!123";
 

@@ -1,9 +1,9 @@
 // Deterministic OpenAI-compatible provider for end-to-end tests.
 //
-// Point the back-end at it with LLM_BASE_URL=http://localhost:<port>/v1 and any
+// Point the backend at it with LLM_BASE_URL=http://localhost:<port>/v1 and any
 // LLM_API_KEY. It echoes the newest user turn so tests can assert that the
 // message actually reached the provider, and streams it in pieces so the
-// front-end exercises the streaming path rather than a single chunk.
+// frontend exercises the streaming path rather than a single chunk.
 import { createServer } from "node:http";
 
 const port = Number(process.env.MOCK_LLM_PORT ?? 4010);
@@ -27,7 +27,7 @@ const finishEvent = {
 };
 
 // OpenRouter sends a terminal chunk carrying usage, just before [DONE]. The
-// back-end records it against the user's token quota.
+// backend records it against the user's token quota.
 const usageEvent = {
   id: "chatcmpl-e2e",
   object: "chat.completion.chunk",

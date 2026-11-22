@@ -18,5 +18,13 @@
       "browser-tabs-lock",
       "esbuild"
     ]
-  }
+  },
+  "workspaces": [
+    "frontend",
+    "e2e"
+  ],
+  "trustedDependencies": [
+    "browser-tabs-lock",
+    "esbuild"
+  ]
 }
