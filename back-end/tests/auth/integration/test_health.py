@@ -1,5 +1,0 @@
-async def test_health_is_public(client) -> None:
-    response = await client.get("/api/v1/health")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}

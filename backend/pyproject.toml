@@ -3,7 +3,7 @@ name = "ai-chat"
 # x-release-please-start-version
 version = "0.1.0"
 # x-release-please-end
-description = "AI Chat — FastAPI back-end"
+description = "AI Chat — FastAPI backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

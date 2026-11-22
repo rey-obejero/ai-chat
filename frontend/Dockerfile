@@ -4,12 +4,12 @@ WORKDIR /app
 RUN corepack enable
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY front-end/package.json front-end/package.json
+COPY frontend/package.json frontend/package.json
 COPY e2e/package.json e2e/package.json
 RUN pnpm install --frozen-lockfile
 
-COPY front-end front-end
-RUN pnpm --filter @ai-chat/front-end build
+COPY frontend frontend
+RUN pnpm --filter @ai-chat/frontend build
 
 FROM caddy:2-alpine
-COPY --from=build /app/front-end/dist /srv/web
+COPY --from=build /app/frontend/dist /srv/web

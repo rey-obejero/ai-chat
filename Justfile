@@ -13,7 +13,7 @@ DEV_DEPS := "postgres supertokens redis mailpit"
 # publishes the datastore ports, so a host-run API reaches them by `localhost`.
 dependencies:
     {{COMPOSE_DEV}} up -d --wait {{DEV_DEPS}}
-    cd back-end && uv run alembic upgrade head
+    cd backend && uv run alembic upgrade head
 
 dependencies-stop:
     {{COMPOSE_DEV}} stop {{DEV_DEPS}}
@@ -25,9 +25,9 @@ dependencies-stop:
 development: dependencies
     #!/usr/bin/env sh
     set -eu
-    ( cd back-end && exec uv run uvicorn ai_chat.main:app --reload --port 8000 --proxy-headers --forwarded-allow-ips "*" ) &
+    ( cd backend && exec uv run uvicorn ai_chat.main:app --reload --port 8000 --proxy-headers --forwarded-allow-ips "*" ) &
     api=$!
-    ( cd front-end && exec pnpm dev --port 5173 ) &
+    ( cd frontend && exec pnpm dev --port 5173 ) &
     spa=$!
     trap 'kill "$api" "$spa" 2>/dev/null || true' EXIT INT TERM
     wait
@@ -50,7 +50,7 @@ development-migrate:
 
 # Self-hosted production: the built SPA behind Caddy and the API from its image,
 # on one origin. Caddy is the only published service. Set SITE_ADDRESS (and the
-# application's own settings in `back-end/.env`) for a real deployment.
+# application's own settings in `backend/.env`) for a real deployment.
 self-host:
     {{COMPOSE_SELFHOST}} up --build
 
@@ -60,22 +60,22 @@ self-host-stop:
 self-host-logs:
     {{COMPOSE_SELFHOST}} logs -f
 
-back-end:
-    cd back-end && uv run uvicorn ai_chat.main:app --reload --port 8000 --proxy-headers --forwarded-allow-ips "*"
+backend:
+    cd backend && uv run uvicorn ai_chat.main:app --reload --port 8000 --proxy-headers --forwarded-allow-ips "*"
 
-front-end:
-    cd front-end && pnpm dev --port 5173
+frontend:
+    cd frontend && pnpm dev --port 5173
 
-test-back-end:
-    cd back-end && uv run pytest
+test-backend:
+    cd backend && uv run pytest
 
 # Same suite with coverage; CI runs this form, so the gate is exercised on every
 # push rather than only when someone remembers.
-test-back-end-coverage:
-    cd back-end && uv run pytest --cov --cov-report=term-missing
+test-backend-coverage:
+    cd backend && uv run pytest --cov --cov-report=term-missing
 
-test-front-end:
-    cd front-end && pnpm test
+test-frontend:
+    cd frontend && pnpm test
 
 # Independent end-to-end run: build the self-hosted stack and a Playwright
 # runner, run the suite in containers against the deterministic mock providers,
@@ -93,9 +93,9 @@ test-e2e:
     $compose --profile test run --rm e2e
 
 lint:
-    cd back-end && uv run ruff check . && uv run ruff format --check .
-    cd front-end && pnpm eslint . && pnpm prettier --check .
+    cd backend && uv run ruff check . && uv run ruff format --check .
+    cd frontend && pnpm eslint . && pnpm prettier --check .
 
 install:
-    cd back-end && uv sync
+    cd backend && uv sync
     pnpm install

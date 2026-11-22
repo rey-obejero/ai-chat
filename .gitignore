@@ -5,8 +5,8 @@
 
 # Node
 node_modules/
-front-end/dist/
-front-end/.vite/
+frontend/dist/
+frontend/.vite/
 *.local
 .pnpm-store/
 # pnpm owns the lockfile here; another manager's must not be committed by accident.
@@ -24,7 +24,7 @@ e2e/.cache/
 __pycache__/
 *.py[cod]
 .venv/
-back-end/.venv/
+backend/.venv/
 .uv/
 *.egg-info/
 .pytest_cache/

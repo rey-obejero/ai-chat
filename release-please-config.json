@@ -10,7 +10,7 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "back-end/pyproject.toml"
+          "path": "backend/pyproject.toml"
         }
       ]
     }
