@@ -35,7 +35,7 @@ trade a real dependency decision for a testing convenience.
   payload the adapter builds is asserted directly.
 - **Harder:** the fake must mirror the SDK's event shape, so a breaking change in
   that shape is not caught by these tests.
-- **We now live with:** two HTTP stacks in the back-end (`httpx` for tests and
+- **We now live with:** two HTTP stacks in the backend (`httpx` for tests and
   `httpx2` pulled in by the SDK), which is the SDK's choice rather than ours.
 
 ## Alternatives considered

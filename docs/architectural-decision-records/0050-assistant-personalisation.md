@@ -35,7 +35,7 @@ assistant's behaviour, are both invisible in the transcript.
 ## Decision
 
 - **Instructions and style are account columns.** `users.instructions` (text,
-  nullable, 2000-character cap enforced at `PUT /preferences`) and
+  nullable, 2000-character cap enforced at `PATCH /preferences`) and
   `users.response_style` (`varchar(16)`, `NOT NULL`, default `default`, one of
   `default | concise | detailed | formal | casual`). `GET /me` and the save
   response both expose them, so the settings form loads and refreshes in one call.

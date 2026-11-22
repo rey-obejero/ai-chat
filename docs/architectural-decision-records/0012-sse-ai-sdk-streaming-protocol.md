@@ -9,8 +9,8 @@
 
 ## TL;DR
 
-The back-end emits server-sent events in the AI SDK v1 data-stream format from a
-hand-rolled FastAPI module; the front-end consumes them with `@ai-sdk/vue`.
+The backend emits server-sent events in the AI SDK v1 data-stream format from a
+hand-rolled FastAPI module; the frontend consumes them with `@ai-sdk/vue`.
 
 ## Context
 
@@ -21,8 +21,8 @@ codebases.
 
 ## Decision
 
-- Front-end: `@ai-sdk/vue`'s `useChat`.
-- Back-end: a small hand-rolled emitter, currently `shared/streaming/ai_sdk.py`,
+- Frontend: `@ai-sdk/vue`'s `useChat`.
+- Backend: a small hand-rolled emitter, currently `shared/streaming/ai_sdk.py`,
   speaking the AI SDK's **UI Message Stream** protocol, version 1 — SSE whose
   `data:` payloads are typed JSON parts, terminated by a literal `[DONE]`. The
   response pins the version with `x-vercel-ai-ui-message-stream: v1`.
@@ -41,7 +41,7 @@ codebases.
 - **Harder:** we own the emitter and the spec-drift test; the client library's
   major versions are a compatibility event.
 - **We now live with:** the exact event shapes are a contract, and changing them
-  is a coordinated front-end/back-end change.
+  is a coordinated frontend/backend change.
 
 ## Alternatives considered
 

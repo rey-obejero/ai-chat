@@ -14,7 +14,7 @@ Closes #
 
 <!-- A change that is hard to reverse needs an ADR. Delete this section if it does not. -->
 
-- [ ] ADR added to `documentation/architectural-decision-records/`
+- [ ] ADR added to `docs/architectural-decision-records/`
 - [ ] Not a decision — no ADR needed
 
 ## Migrations
@@ -31,8 +31,8 @@ Deploy order:
 
 <!-- What was run, and what was seen. "Tests pass" is not evidence on its own. -->
 
-- [ ] `just test-back-end`
-- [ ] `just test-front-end`
+- [ ] `just test-backend`
+- [ ] `just test-frontend`
 - [ ] `just test-e2e`
 - [ ] `just lint`
 - [ ] Exercised manually: <!-- which flow, and what you observed -->

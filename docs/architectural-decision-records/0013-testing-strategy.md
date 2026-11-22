@@ -9,8 +9,8 @@
 
 ## TL;DR
 
-Fast unit tests plus real-infrastructure integration tests on the back-end,
-component tests on the front-end, and Playwright for end-to-end flows.
+Fast unit tests plus real-infrastructure integration tests on the backend,
+component tests on the frontend, and Playwright for end-to-end flows.
 
 ## Context
 
@@ -21,11 +21,11 @@ HTTP dependency we neither want to call nor fully mock away.
 
 ## Decision
 
-- Back-end: `pytest` with `pytest-asyncio` in auto mode, `httpx` with
+- Backend: `pytest` with `pytest-asyncio` in auto mode, `httpx` with
   `ASGITransport` for in-memory app tests, `respx` to fake provider HTTP calls,
   and Testcontainers for a real throwaway Postgres in integration tests.
 - Tests mirror the slice and are split by kind: `tests/<feature>/{unit,integration}/`.
-- Front-end: Vitest with Vue Test Utils (not `@testing-library/vue`) plus MSW
+- Frontend: Vitest with Vue Test Utils (not `@testing-library/vue`) plus MSW
   for network faking.
 - End-to-end: Playwright in the root `e2e/` package.
 - AnyIO markers are skipped because the two plugins conflict; revisit only if a

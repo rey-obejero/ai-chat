@@ -63,7 +63,7 @@ The markdown image rule drops every non-http(s) source, including `data:` URIs.
 - **Linkify external images** — leaks the reader to the third party; not the
   industry pattern.
 - **Client-side signing (Camo-style URL HMAC)** — the reader's browser still
-  fetches; a shared secret in the front-end does not exist by design.
+  fetches; a shared secret in the frontend does not exist by design.
 - **Allow SVG** — SVG can carry script; excluded from the allowlist.
 - **No cache** — re-fetches every view, and re-exposes the origin to load
   tracking.

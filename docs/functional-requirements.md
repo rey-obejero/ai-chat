@@ -6,7 +6,7 @@
 | **Status** | Draft |
 | **Version** | 1.2 |
 | **Date** | 2026-10-16 |
-| **References** | the ADRs and `DESIGN.md` under `documentation/`; the issue tracker |
+| **References** | the ADRs and `DESIGN.md` under `docs/`; the issue tracker |
 
 ## 1. Introduction
 
@@ -564,7 +564,7 @@ requirement's **Source** names its stable work item ID.
 | WI-17 | settings-and-providers | FR-39, FR-40, FR-41 | #46 |
 
 Three work items migrated from the retired roadmap carry no requirement of their
-own and are filed directly: R1 (#47, the two front-end styling defects), R2 (#48,
+own and are filed directly: R1 (#47, the two frontend styling defects), R2 (#48,
 dereferenceable RFC 9457 `type` URIs), R3 (#49, the public deploy).
 
 Work item IDs are stable: they are never replaced by an issue number. The issue

@@ -17,7 +17,7 @@ without a key, a network call, or a real model.
 The chat flow is only worth testing end to end if a reply actually streams.
 Mocking the API in the browser would skip the part most likely to break — the
 SSE wiring between the emitter (ADR-0012) and the client transport (ADR-0022).
-ADR-0013 chose respx for provider HTTP in back-end tests, but that lives outside
+ADR-0013 chose respx for provider HTTP in backend tests, but that lives outside
 the browser and cannot cover the client.
 
 Calling a real provider in e2e would need a secret in CI, cost money per run,
@@ -42,7 +42,7 @@ and return text that is not deterministic enough to assert on.
 - **Harder:** the mock must stay faithful to the OpenAI streaming shape, so a
   provider-side format change is not caught here.
 - **We now live with:** `reuseExistingServer` means a developer who already has
-  `just back-end` running will have e2e reuse that instance, which lacks the mock
+  `just backend` running will have e2e reuse that instance, which lacks the mock
   configuration. Stop dev servers before `just test-e2e`, or the chat specs will
   see 503s.
 

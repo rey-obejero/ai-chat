@@ -27,7 +27,7 @@ dev servers slow down.
 
 - `compose.yaml` defines `postgres` (image `pgvector/pgvector:pg16`, with an
   init script) and `supertokens` (built on the Postgres image).
-- `just dependencies` starts them; `just back-end` and `just front-end` run the
+- `just dependencies` starts them; `just backend` and `just frontend` run the
   application processes on `:8000` and `:5173`.
 - The SPA's `/api` calls are proxied to the API by Vite in development.
 - The `api` container, Caddy, and object storage are deferred and removed from

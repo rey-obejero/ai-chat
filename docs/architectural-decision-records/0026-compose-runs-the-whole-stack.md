@@ -41,8 +41,8 @@ hurt.
 ## Decision
 
 - `infrastructure/docker/compose.yaml` defines `postgres`, `supertokens`,
-  `redis`, `migrate`, `api`, `front-end`, and `caddy`.
-- The front-end service runs the **Vite dev server**, not a static build.
+  `redis`, `migrate`, `api`, `frontend`, and `caddy`.
+- The frontend service runs the **Vite dev server**, not a static build.
 - Caddy is the only service that publishes a host port: **port 80 and nothing
   else**. This is a security rule, not a convention.
 - The API listens on 8000 inside the compose network only.
@@ -51,7 +51,7 @@ hurt.
   `compose.host-deps.yaml`, which republishes only the dependency ports.
 - A one-shot `migrate` service runs `alembic upgrade head`; `api` waits for it to
   succeed.
-- Secrets stay out of the build context: `back-end/.dockerignore` excludes
+- Secrets stay out of the build context: `backend/.dockerignore` excludes
   dotenv files. `.gitignore` does not apply to Docker, so this is a separate rule
   from ADR-0009.
 
@@ -65,7 +65,7 @@ adding either would break a working setup in a way that is hard to read.
 - **Easier:** proxy configuration is exercised on every run, so a routing bug
   fails in development instead of at deploy. One command brings up the stack at
   one origin. Migrations run automatically on a fresh volume.
-- **Harder:** no host `just back-end` / `just front-end` reload loop for the
+- **Harder:** no host `just backend` / `just frontend` reload loop for the
   normal workflow. Startup waits on `pnpm install` inside the container.
 - **We now live with:** uvicorn trusts `X-Forwarded-For` from any peer, and the
   rate limiter keys unauthenticated requests on exactly that header. Publishing

@@ -23,8 +23,8 @@ URLs, table names, types, and module paths, and makes it unclear what any given
 
 - Feature slices, tables, routes, schemas, and types use `conversation` /
   `conversations`.
-- The API route is `/api/v1/conversations`; the back-end slice is
-  `ai_chat.conversations`; the front-end feature is `features/conversations`.
+- The API route is `/api/v1/conversations`; the backend slice is
+  `ai_chat.conversations`; the frontend feature is `features/conversations`.
 - "AI Chat" remains the product's display name, and is the only sanctioned use
   of the word.
 - Any pre-existing `chat`-named code, route, or type is a rename, not a synonym.

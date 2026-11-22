@@ -46,7 +46,7 @@ set would bloat the bundle.
 ## Consequences
 
 - **Easier:** formatted replies with a small, auditable safety story; a bundle
-  delta the front-end can carry.
+  delta the frontend can carry.
 - **Harder:** two rendering paths to keep consistent (ADR-0044); the sanitizer
   allowlist must track any new generated markup.
 - **We now live with:** no light/dark highlight pair until WI-15, and no

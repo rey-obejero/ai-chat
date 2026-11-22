@@ -20,7 +20,7 @@ body:
     id: requirement
     attributes:
       label: Related requirement
-      description: The requirement identifier from documentation/functional-requirements.md, if this touches one (for example FR-17).
+      description: The requirement identifier from docs/functional-requirements.md, if this touches one (for example FR-17).
     validations:
       required: false
   - type: textarea

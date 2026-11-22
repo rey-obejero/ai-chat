@@ -46,7 +46,7 @@ stays `undefined` and the SDK attempts no linking.
   keep using the password. The refusal message must therefore name the real
   cause and route them back to password sign-in, or it reads as a bug.
 - **We now live with:** `users.email` is `unique=True`
-  (`back-end/src/ai_chat/auth/models.py:13`) and that is **load-bearing**. It
+  (`backend/src/ai_chat/auth/models.py:13`) and that is **load-bearing**. It
   aligns with this policy rather than being an independent constraint.
   Relaxing it — for instance to permit duplicate accounts — does not work
   around this ADR, it reopens this decision.

@@ -1,6 +1,6 @@
 # AI Chat
 
-![Conversations View](./documentation/assets/screenshot.png)
+![Conversations View](./docs/assets/screenshot.png)
 
 A web-based AI chat interface.
 
@@ -15,6 +15,7 @@ A web-based AI chat interface.
 - [Getting Started](#getting-started)
   - [OAuth redirect URIs](#oauth-redirect-uris)
 - [Releasing](#releasing)
+- [Documentation](#documentation)
 - [Features](#features)
   - [Authentication](#authentication)
 
@@ -22,8 +23,8 @@ A web-based AI chat interface.
 
 | Area               | Technology                 |
 | ------------------ | -------------------------- |
-| Back-End           | FastAPI, Python            |
-| Front-End          | Vue 3, Vite, TypeScript    |
+| Backend            | FastAPI, Python            |
+| Frontend           | Vue 3, Vite, TypeScript    |
 | UI                 | PrimeVue 4, TailwindCSS V4 |
 | Authentication     | SuperTokens                |
 | Database           | PostgreSQL, SQLAlchemy     |
@@ -170,15 +171,15 @@ only needed to change a default:
 
 | Copy                                 | To                           | For                                                                                           |
 | ------------------------------------ | ---------------------------- | --------------------------------------------------------------------------------------------- |
-| `back-end/.env.example`              | `back-end/.env`              | the API's own settings — an LLM key for real replies, or OAuth credentials for social sign-in |
+| `backend/.env.example`              | `backend/.env`              | the API's own settings — an LLM key for real replies, or OAuth credentials for social sign-in |
 | `infrastructure/docker/.env.example` | `infrastructure/docker/.env` | the Compose files — database password, published ports, and the self-hosted address            |
 
-The containerized development stack loads `back-end/.env` too, so a credential
+The containerized development stack loads `backend/.env` too, so a credential
 added there is picked up whether the API runs in the container or on the host.
 The Docker one is optional: every value in it has a working default.
 
-`just dependencies` brings up just the datastores, and `just back-end` /
-`just front-end` run the API and the SPA individually — useful for debugging. The
+`just dependencies` brings up just the datastores, and `just backend` /
+`just frontend` run the API and the SPA individually — useful for debugging. The
 end-to-end suite uses its own stack; run it with `just test-e2e`.
 
 ### OAuth redirect URIs
@@ -189,8 +190,8 @@ port in development and the Caddy address when self-hosted, register one per
 origin:
 
 ```
-http://localhost:5173/authentication/callback    # development
-https://chat.example.com/authentication/callback # self-hosted (your domain)
+http://localhost:5173/auth/callback    # development
+https://chat.example.com/auth/callback # self-hosted (your domain)
 ```
 
 The same path serves every provider; providers distinguish by their own client
@@ -227,8 +228,14 @@ version and writes `CHANGELOG.md`; merging that PR tags the commit (`vX.Y.Z`) an
 publishes the GitHub Release. The full setup, including the optional
 `RELEASE_PLEASE_TOKEN` secret, is documented in [`AGENTS.md`](./AGENTS.md).
 
+## Documentation
+
+Requirements and ADRs live in [`docs/`](./docs/); naming rules for URLs,
+routes, directories, and imports are in
+[`docs/naming-conventions.md`](./docs/naming-conventions.md).
+
 ## Features
 
 ### Authentication
 
-![Sign-In View](./documentation/assets/screenshots/authentication/sign-in.png)
+![Sign-In View](./docs/assets/screenshots/authentication/sign-in.png)

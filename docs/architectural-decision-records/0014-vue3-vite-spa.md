@@ -1,4 +1,4 @@
-# ADR-0014: The front-end is a Vue 3 + Vite SPA
+# ADR-0014: The frontend is a Vue 3 + Vite SPA
 
 - **Status:** Accepted
 - **Date:** 2026-09-22

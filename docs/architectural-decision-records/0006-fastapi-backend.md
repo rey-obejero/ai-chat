@@ -1,4 +1,4 @@
-# ADR-0006: FastAPI is the back-end framework
+# ADR-0006: FastAPI is the backend framework
 
 - **Status:** Accepted
 - **Date:** 2026-09-22
@@ -13,7 +13,7 @@ The API is a FastAPI (ASGI) application.
 
 ## Context
 
-The back-end serves a JSON API, streams model output over SSE, and is built as
+The backend serves a JSON API, streams model output over SSE, and is built as
 an async app talking to Postgres and several external services. It also needs
 first-class request validation and generated API documentation without extra
 work.

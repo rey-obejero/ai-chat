@@ -72,7 +72,7 @@ not available here.
 - **`.test`, `.local`, `.example`, `.invalid`** — all RFC 6761 reserved TLDs,
   all rejected by the same Public Suffix List rule.
 - **Free TLDs (`.tk`, `.ml`)** — Freenom ended free registration in 2023.
-- **A different port (8000, 8080)** — 8000 is claimed by `just back-end` and the
+- **A different port (8000, 8080)** — 8000 is claimed by `just backend` and the
   e2e API; 8080 works but forces the port into every URL and every registered
   redirect URI. Nothing in the repository claims 80, so the collision disappears
   entirely and the browser omits the port.

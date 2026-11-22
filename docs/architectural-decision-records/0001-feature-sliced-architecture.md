@@ -22,13 +22,13 @@ other, so boundaries erode as the project grows.
 
 ## Decision
 
-- Back-end: `back-end/src/ai_chat/<feature>/`, front-end:
-  `front-end/src/features/<feature>/`.
-- Each feature exposes an explicit public API — `__init__.py` on the back-end,
-  `index.ts` on the front-end. Nothing imports a feature's internals across a
+- Backend: `backend/src/ai_chat/<feature>/`, frontend:
+  `frontend/src/features/<feature>/`.
+- Each feature exposes an explicit public API — `__init__.py` on the backend,
+  `index.ts` on the frontend. Nothing imports a feature's internals across a
   boundary.
 - Cross-cutting infrastructure is horizontal and lives in `shared/`
-  (back-end) and `app/` + `lib/` (front-end). It holds no domain rules.
+  (backend) and `app/` + `lib/` (frontend). It holds no domain rules.
 - `main.py` owns the `/api/v1` router prefix; SuperTokens routes live under
   `/api/auth`.
 - Tests mirror the slice, split by kind: `tests/<feature>/{unit,integration}/`.

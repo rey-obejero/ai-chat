@@ -22,7 +22,7 @@ chat-only provider would force a second vendor for embeddings.
 
 ## Decision
 
-- The back-end talks to OpenRouter at `https://openrouter.ai/api/v1` using the
+- The backend talks to OpenRouter at `https://openrouter.ai/api/v1` using the
   OpenAI Python SDK with a configurable base URL.
 - The same base URL and key cover chat completions and embeddings; the
   embeddings endpoint is OpenAI-compatible and non-streaming.

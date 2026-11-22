@@ -9,7 +9,7 @@
 
 ## TL;DR
 
-Back-end, front-end, and end-to-end tests live in one repository driven by uv
+Backend, frontend, and end-to-end tests live in one repository driven by uv
 (Python), pnpm (JS), and just (tasks), with one CI pipeline.
 
 ## Context
@@ -21,13 +21,13 @@ set of git hooks and one CI entry point.
 
 ## Decision
 
-- One repository: `back-end/`, `front-end/`, `e2e/`, `documentation/`.
+- One repository: `backend/`, `frontend/`, `e2e/`, `docs/`.
 - Package management: `uv` for Python, `pnpm` for JavaScript.
-- Task runner: `just` exposes the common commands (`just back-end`,
-  `just test-back-end`, `just lint`, …) so the two toolchains share one entry
+- Task runner: `just` exposes the common commands (`just backend`,
+  `just test-backend`, `just lint`, …) so the two toolchains share one entry
   point.
 - Hooks: Husky + commitlint (Conventional Commits) + lint-staged.
-- CI: one GitHub Actions workflow with back-end (ruff, pytest), front-end
+- CI: one GitHub Actions workflow with backend (ruff, pytest), frontend
   (eslint, prettier, vitest, build), and gitleaks jobs.
 
 ## Consequences

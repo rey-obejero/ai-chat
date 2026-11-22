@@ -59,7 +59,7 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0003](0003-rfc9457-problem-json-errors.md) | RFC 9457 `problem+json` errors | Accepted | 2026-09-22 |
 | [0004](0004-no-mapper-layer.md) | No mapper layer | Accepted | 2026-09-22 |
 | [0005](0005-conversations-domain-vocabulary.md) | "Conversations" as the domain vocabulary | Accepted | 2026-09-22 |
-| [0006](0006-fastapi-backend.md) | FastAPI back-end | Accepted | 2026-09-22 |
+| [0006](0006-fastapi-backend.md) | FastAPI backend | Accepted | 2026-09-22 |
 | [0007](0007-postgres-pgvector-tsvector.md) | Postgres for relational, vector, and keyword search | Accepted | 2026-09-22 |
 | [0008](0008-sqlalchemy-async-alembic.md) | SQLAlchemy 2.x async with Alembic | Accepted | 2026-09-22 |
 | [0009](0009-pydantic-settings-and-secrets.md) | Typed settings, env-only secrets | Accepted | 2026-09-22 |
@@ -80,7 +80,7 @@ Start new records from [`TEMPLATE.md`](TEMPLATE.md).
 | [0024](0024-durable-token-quota.md) | The token quota is a Postgres ledger with a calendar period | Accepted | 2026-09-22 |
 | [0025](0025-caddy-in-development.md) | Caddy fronts development, on plain `http://localhost` | Superseded by [0046](0046-vite-proxy-in-development.md) | 2026-10-03 |
 | [0026](0026-compose-runs-the-whole-stack.md) | Compose runs the whole stack, Caddy included | Superseded by [0046](0046-vite-proxy-in-development.md) | 2026-10-03 |
-| [0027](0027-public-url-namespaces.md) | `/authentication` and `/application` partition the public URL space | Accepted | 2026-10-03 |
+| [0027](0027-public-url-namespaces.md) | `/auth` and `/app` partition the public URL space | Accepted | 2026-10-03 |
 | [0028](0028-no-social-account-linking.md) | Social sign-in never merges into an existing account | Accepted | 2026-10-03 |
 | [0029](0029-gated-test-identity-provider.md) | The application carries a gated stand-in identity provider for tests | Accepted | 2026-10-04 |
 | [0030](0030-transactional-mail-over-smtp.md) | Transactional mail goes out over SMTP, caught by Mailpit in development | Accepted | 2026-10-04 |
