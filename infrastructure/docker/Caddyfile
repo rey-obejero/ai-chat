@@ -1,6 +1,6 @@
 # Caddy — the self-hosted front door (ADR-0046).
 #
-# It serves the built SPA from /srv/web and proxies /api/* to the API, so the
+# It serves the built SPA from /srv/web and proxies /api* to the API, so the
 # browser sees one origin. Development does not use Caddy: Vite's dev proxy
 # provides the same single origin there.
 #
@@ -14,32 +14,50 @@
 {$SITE_ADDRESS:http://localhost} {
     encode zstd gzip
 
-    # No Strict-Transport-Security: it is ignored over HTTP and would only risk
-    # pinning a local host to HTTPS. Over HTTPS Caddy adds it by default.
-    header {
-        X-Content-Type-Options "nosniff"
-        # The reset link carries a single-use token in its query string. Any
-        # third-party resource on the page would receive it as a Referer under
-        # a weaker policy, so send none at all (ADR-0031).
-        Referrer-Policy        "no-referrer"
-    }
+    # API first: everything under the /api prefix goes to the app. The path
+    # wildcard matches /api, /api/, /api/v1/x and /api-anything, mirroring
+    # Vite's prefix-based dev proxy so dev and production route identically.
+    @api path /api*
 
-    handle /api/* {
+    handle @api {
         # Forward the path untouched: the app mounts its router at /api/v1 and
         # SuperTokens gates /api/auth, both of which need the prefix to survive.
         #
         # No flush_interval: Caddy flushes `text/event-stream` responses and
         # responses with unknown Content-Length immediately regardless, so SSE
         # streaming needs no setting (ADR-0046).
+        #
+        # No response headers are added here: the API owns its own, and adding
+        # ours would duplicate and conflict with them.
         reverse_proxy api:8000
     }
 
-    handle {
+    # Only document loads get the SPA fallback. Restricting to GET/HEAD keeps
+    # POST/PUT/DELETE /nonsense a 404 (as in dev) instead of returning
+    # index.html with a 200.
+    @pageLoad method GET HEAD
+
+    handle @pageLoad {
+        header {
+            X-Content-Type-Options "nosniff"
+            # The reset link carries a single-use token in its query string.
+            # Any third-party resource on the page would receive it as a
+            # Referer under a weaker policy (ADR-0031). This is the same value
+            # the API sends, so both halves of the origin agree.
+            Referrer-Policy   "strict-origin-when-cross-origin"
+            X-Frame-Options   "DENY"
+        }
+
         # The built SPA. `try_files` falls back to index.html so client-side
         # routes resolve on a direct load.
         root * /srv/web
         try_files {path} /index.html
         file_server
+    }
+
+    # Anything else is not a route this origin serves.
+    handle {
+        respond 404
     }
 
     log {

@@ -6,7 +6,7 @@ name: ai-chat
 #
 # A real deployment sets SITE_ADDRESS to its domain (Caddy then obtains a
 # certificate automatically) and provides the application's own settings — LLM
-# key, OAuth credentials, a real SMTP host — through `back-end/.env`. Only the
+# key, OAuth credentials, a real SMTP host — through `backend/.env`. Only the
 # values that differ inside the network are overridden here.
 
 x-logging: &logging
@@ -80,13 +80,13 @@ services:
     # One-shot: without this the API starts cleanly and then 500s on missing
     # tables, which is a confusing failure. `api` waits for it to succeed.
     build:
-      context: ../../back-end
+      context: ../../backend
     command: ["alembic", "upgrade", "head"]
     depends_on:
       postgres:
         condition: service_healthy
     env_file:
-      - path: ../../back-end/.env
+      - path: ../../backend/.env
         required: false
     environment: &api-env
       # Only what differs inside the network. `environment` wins over
@@ -109,7 +109,7 @@ services:
 
   api:
     build:
-      context: ../../back-end
+      context: ../../backend
     restart: unless-stopped
     depends_on:
       postgres:
@@ -121,7 +121,7 @@ services:
       migrate:
         condition: service_completed_successfully
     env_file:
-      - path: ../../back-end/.env
+      - path: ../../backend/.env
         required: false
     environment: *api-env
     deploy:
@@ -131,11 +131,11 @@ services:
     logging: *logging
 
   caddy:
-    # Built from the front-end image (a Caddy base with the SPA at /srv/web) and
+    # Built from the frontend image (a Caddy base with the SPA at /srv/web) and
     # configured by ./Caddyfile to serve that build and proxy /api to the API.
     build:
       context: ../..
-      dockerfile: front-end/Dockerfile
+      dockerfile: frontend/Dockerfile
     restart: unless-stopped
     depends_on:
       api:
@@ -146,6 +146,7 @@ services:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     environment:
+      # Must be a full URL with scheme: the API consumes it and rejects a bare host.
       SITE_ADDRESS: ${SITE_ADDRESS:-http://localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

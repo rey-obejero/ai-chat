@@ -92,7 +92,7 @@ services:
     # One-shot: without this the API starts cleanly and then 500s on missing
     # tables, which is a confusing failure. `api` waits for it to succeed.
     build:
-      context: ../../back-end
+      context: ../../backend
     command: ["alembic", "upgrade", "head"]
     depends_on:
       postgres:
@@ -102,7 +102,7 @@ services:
     # what keeps a secret in one place instead of a copy per runner. Absent is
     # fine: every setting has a default.
     env_file:
-      - path: ../../back-end/.env
+      - path: ../../backend/.env
         required: false
     environment: &api-env
       # Only what differs inside the container. `environment` wins over
@@ -126,7 +126,7 @@ services:
 
   api:
     build:
-      context: ../../back-end
+      context: ../../backend
     restart: unless-stopped
     depends_on:
       postgres:
@@ -138,14 +138,14 @@ services:
       migrate:
         condition: service_completed_successfully
     env_file:
-      - path: ../../back-end/.env
+      - path: ../../backend/.env
         required: false
     environment: *api-env
     volumes:
       # Source only, so editing a Python file reloads the API. The virtualenv
       # stays in the image.
-      - ../../back-end/src:/app/src:ro
-      - ../../back-end/alembic:/app/alembic:ro
+      - ../../backend/src:/app/src:ro
+      - ../../backend/alembic:/app/alembic:ro
     command:
       - uvicorn
       - ai_chat.main:app
@@ -165,11 +165,11 @@ services:
           memory: 1g
     logging: *logging
 
-  front-end:
+  frontend:
     image: node:22-alpine
-    working_dir: /app/front-end
+    working_dir: /app/frontend
     restart: unless-stopped
-    # Install from the workspace root, not from front-end/: the
+    # Install from the workspace root, not from frontend/: the
     # onlyBuiltDependencies allowlist that permits esbuild's postinstall lives
     # in the root package.json, and pnpm only reads it there.
     command:
@@ -179,7 +179,7 @@ services:
         corepack enable &&
         cd /app &&
         pnpm install --frozen-lockfile &&
-        cd front-end &&
+        cd frontend &&
         pnpm dev --host 0.0.0.0 --port 5173
     ports:
       # The browser origin for containerized development. Vite proxies /api to
@@ -190,7 +190,7 @@ services:
       # Every node_modules the install touches must be a volume, or the
       # container leaves root-owned files in the host's working tree.
       - workspace-modules:/app/node_modules
-      - front-end-modules:/app/front-end/node_modules
+      - frontend-modules:/app/frontend/node_modules
       - e2e-modules:/app/e2e/node_modules
     environment:
       # CI=true keeps pnpm non-interactive: the container's node_modules is a
@@ -211,5 +211,5 @@ services:
 volumes:
   pgdata:
   workspace-modules:
-  front-end-modules:
+  frontend-modules:
   e2e-modules:
