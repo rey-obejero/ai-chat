@@ -1,6 +1,6 @@
-import { expect, test } from "../authentication/fixtures";
-import { SignUpPage } from "../authentication/sign-up/SignUpPage";
-import { uniqueEmail } from "../authentication/support/test-user";
+import { expect, test } from "../auth/fixtures";
+import { SignUpPage } from "../auth/sign-up/SignUpPage";
+import { uniqueEmail } from "../auth/support/test-user";
 
 const VALID_PASSWORD = "Passw0rd!123";
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:5173";
@@ -14,7 +14,7 @@ test("shows the rate-limit copy when the chat request is refused", async ({
   await signUpPage.signUp(uniqueEmail(), VALID_PASSWORD);
 
   await page.getByRole("button", { name: "New conversation" }).click();
-  await expect(page).toHaveURL(/\/application\/conversations\/[\w-]+$/);
+  await expect(page).toHaveURL(/\/app\/conversations\/[\w-]+$/);
 
   // The e2e stack runs with rate limiting off, so the refusal is synthesized
   // at the browser boundary. The body mirrors the middleware's problem+json.

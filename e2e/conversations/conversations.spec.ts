@@ -1,6 +1,6 @@
-import { expect, test } from "../authentication/fixtures";
-import { SignUpPage } from "../authentication/sign-up/SignUpPage";
-import { uniqueEmail } from "../authentication/support/test-user";
+import { expect, test } from "../auth/fixtures";
+import { SignUpPage } from "../auth/sign-up/SignUpPage";
+import { uniqueEmail } from "../auth/support/test-user";
 
 const VALID_PASSWORD = "Passw0rd!123";
 
@@ -13,7 +13,7 @@ test("sends a message and renders the streamed reply", async ({ signUpPage, page
   await signUpFreshAccount(signUpPage);
 
   await page.getByRole("button", { name: "New conversation" }).click();
-  await expect(page).toHaveURL(/\/application\/conversations\/[\w-]+$/);
+  await expect(page).toHaveURL(/\/app\/conversations\/[\w-]+$/);
 
   await page.getByLabel("Message").fill("Hello from e2e");
   await page.getByRole("button", { name: "Send" }).click();
@@ -49,12 +49,12 @@ test("creates the conversation from the first message on the empty state", async
   page,
 }) => {
   await signUpFreshAccount(signUpPage);
-  await expect(page).toHaveURL(/\/application\/conversations$/);
+  await expect(page).toHaveURL(/\/app\/conversations$/);
 
   await page.getByLabel("Message").fill("Straight to it");
   await page.getByRole("button", { name: "Send" }).click();
 
-  await expect(page).toHaveURL(/\/application\/conversations\/[\w-]+$/);
+  await expect(page).toHaveURL(/\/app\/conversations\/[\w-]+$/);
   await expect(
     page.getByRole("log").getByText("Mock reply: Straight to it", { exact: true }),
   ).toBeVisible();

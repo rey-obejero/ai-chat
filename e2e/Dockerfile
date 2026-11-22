@@ -8,9 +8,9 @@ WORKDIR /app
 RUN corepack enable
 
 # Only the e2e package's dependencies are installed; the suite drives the app
-# from across the network, so it does not need the front-end.
+# from across the network, so it does not need the frontend.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY front-end/package.json front-end/package.json
+COPY frontend/package.json frontend/package.json
 COPY e2e/package.json e2e/package.json
 RUN pnpm install --frozen-lockfile --filter @ai-chat/e2e
 
